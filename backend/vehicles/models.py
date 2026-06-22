@@ -1,0 +1,79 @@
+from django.db import models
+
+from owners.models import CarOwner
+
+
+class Vehicle(models.Model):
+    FUEL_CHOICES = [
+        ("petrol", "Petrol"),
+        ("diesel", "Diesel"),
+        ("electric", "Electric"),
+        ("cng", "CNG"),
+        ("hybrid", "Hybrid"),
+    ]
+    TRANSMISSION_CHOICES = [
+        ("manual", "Manual"),
+        ("automatic", "Automatic"),
+    ]
+    STATUS_CHOICES = [
+        ("available", "Available"),
+        ("rented", "Rented Out"),
+        ("maintenance", "Under Maintenance"),
+        ("inactive", "Inactive"),
+    ]
+
+    owner = models.ForeignKey(CarOwner, on_delete=models.PROTECT, related_name="vehicles")
+
+    registration_number = models.CharField(max_length=20, unique=True)
+    make = models.CharField(max_length=60)
+    model = models.CharField(max_length=60)
+    year = models.PositiveIntegerField(null=True, blank=True)
+    color = models.CharField(max_length=30, blank=True, default="")
+    seating_capacity = models.PositiveIntegerField(default=4)
+    fuel_type = models.CharField(max_length=20, choices=FUEL_CHOICES, default="petrol")
+    transmission = models.CharField(max_length=20, choices=TRANSMISSION_CHOICES, default="manual")
+
+    primary_photo = models.ImageField(upload_to="vehicles/", blank=True, null=True)
+
+    daily_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    # Override of the global default owner-share % for this specific vehicle.
+    owner_share_percent_override = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="Optional per-vehicle override of owner share %. Takes priority over owner/global default.",
+    )
+
+    current_odometer = models.PositiveIntegerField(default=0, help_text="Latest known odometer reading (km).")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="available")
+
+    insurance_expiry = models.DateField(null=True, blank=True)
+    permit_expiry = models.DateField(null=True, blank=True)
+    fitness_expiry = models.DateField(null=True, blank=True)
+    rc_number = models.CharField(max_length=50, blank=True, default="")
+
+    notes = models.TextField(blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["registration_number"]
+
+    def __str__(self):
+        return f"{self.registration_number} ({self.make} {self.model})"
+
+    def effective_owner_share_percent(self):
+        """Resolution order: vehicle override -> owner default -> global setting."""
+        if self.owner_share_percent_override is not None:
+            return self.owner_share_percent_override
+        if self.owner.default_share_percent is not None:
+            return self.owner.default_share_percent
+        from settings_app.models import ApplicationSettings
+        return ApplicationSettings.load().default_owner_share_percent
+
+
+class VehicleImage(models.Model):
+    """Additional gallery images for a vehicle (beyond the primary photo)."""
+    vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="gallery_images")
+    image = models.ImageField(upload_to="vehicles/gallery/")
+    caption = models.CharField(max_length=100, blank=True, default="")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
