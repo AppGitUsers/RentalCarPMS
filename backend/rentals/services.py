@@ -29,9 +29,8 @@ def compute_owner_outstanding_balance(owner):
 
 
 def compute_owner_share_for_rental(rental):
-    """The amount owed to the owner for a single closed rental (excludes GST, which the company keeps/remits)."""
-    pre_tax_total = rental.total_amount - rental.gst_amount
-    return round(pre_tax_total * (rental.owner_share_percent_snapshot / Decimal('100')), 2)
+    """The amount owed to the owner for a single closed rental — percentage of base amount only. Late fees, extra KM, and damage charges are kept entirely by the company."""
+    return round(rental.base_amount * (rental.owner_share_percent_snapshot / Decimal('100')), 2)
 
 
 def unpaid_rentals_for_owner(owner):
