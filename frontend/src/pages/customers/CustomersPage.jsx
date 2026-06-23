@@ -104,6 +104,7 @@ export default function CustomersPage() {
         open={!!viewingCustomer}
         onClose={() => setViewingCustomer(null)}
         customer={viewingCustomer}
+        onEdit={(c) => { setViewingCustomer(null); setEditingCustomer(c); setFormOpen(true); }}
       />
     </div>
   );

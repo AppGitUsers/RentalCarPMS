@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Gauge, Fuel, Users as UsersIcon, Cog, Phone, Calendar } from 'lucide-react';
+import { Gauge, Fuel, Users as UsersIcon, Cog, Phone, Calendar, Pencil } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
+import Button from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Feedback';
 import * as vehiclesApi from '../../api/vehicles';
 import { useSettings } from '../../context/SettingsContext';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
-export default function VehicleDetailModal({ open, onClose, vehicle }) {
+export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
   const { settings } = useSettings();
   const [history, setHistory] = useState(null);
 
@@ -63,6 +64,12 @@ export default function VehicleDetailModal({ open, onClose, vehicle }) {
           <PricingMini label="Insurance Expiry" value={vehicle.insurance_expiry || 'Not set'} icon={Calendar} />
           <PricingMini label="Permit Expiry" value={vehicle.permit_expiry || 'Not set'} icon={Calendar} />
         </div>
+
+        {onEdit && (
+          <div className="flex justify-end">
+            <Button variant="secondary" icon={Pencil} size="sm" onClick={() => onEdit(vehicle)}>Edit Vehicle</Button>
+          </div>
+        )}
 
         <div>
           <h4 className="text-sm font-semibold text-navy-800 mb-3">Rental History</h4>

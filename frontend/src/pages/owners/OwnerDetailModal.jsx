@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Phone, Wallet, Car, History, CheckSquare, Square } from 'lucide-react';
+import { Phone, Wallet, Car, History, CheckSquare, Square, Pencil } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -11,7 +11,7 @@ import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/ui/Toast';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
-export default function OwnerDetailModal({ open, onClose, owner, onPayoutComplete }) {
+export default function OwnerDetailModal({ open, onClose, owner, onPayoutComplete, onEdit }) {
   const { settings } = useSettings();
   const { showToast } = useToast();
   const symbol = settings?.currency_symbol || '₹';
@@ -96,6 +96,12 @@ export default function OwnerDetailModal({ open, onClose, owner, onPayoutComplet
   return (
     <Modal open={open} onClose={onClose} title={owner.name} subtitle={owner.phone} size="lg">
       <div className="space-y-5">
+        <div className="flex justify-end">
+          {onEdit && (
+            <Button variant="secondary" icon={Pencil} size="sm" onClick={() => onEdit(owner)}>Edit Owner</Button>
+          )}
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
           <SummaryMini label="Vehicles Owned" value={owner.vehicle_count ?? owner.vehicles?.length ?? 0} icon={Car} />
           <SummaryMini label="Outstanding Balance" value={formatCurrency(liveBalance ?? owner.outstanding_balance, symbol)} icon={Wallet} tone="amber" />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Phone, Mail, MapPin, CreditCard } from 'lucide-react';
+import { Phone, Mail, MapPin, CreditCard, Pencil } from 'lucide-react';
+import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Feedback';
@@ -7,7 +8,7 @@ import * as customersApi from '../../api/customers';
 import { useSettings } from '../../context/SettingsContext';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
-export default function CustomerDetailModal({ open, onClose, customer }) {
+export default function CustomerDetailModal({ open, onClose, customer, onEdit }) {
   const { settings } = useSettings();
   const [history, setHistory] = useState(null);
 
@@ -25,21 +26,52 @@ export default function CustomerDetailModal({ open, onClose, customer }) {
   return (
     <Modal open={open} onClose={onClose} title={customer.full_name} subtitle="Customer profile & rental history" size="lg">
       <div className="space-y-5">
-        <div className="flex items-center gap-4">
-          {customer.customer_photo ? (
-            <img src={customer.customer_photo} alt="" className="w-16 h-16 rounded-full object-cover" />
-          ) : (
-            <div className="w-16 h-16 rounded-full bg-navy-100 flex items-center justify-center text-xl font-semibold text-navy-500">
-              {customer.full_name[0]}
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            {customer.customer_photo ? (
+              <img src={customer.customer_photo} alt="" className="w-16 h-16 rounded-full object-cover flex-shrink-0" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-navy-100 flex items-center justify-center text-xl font-semibold text-navy-500 flex-shrink-0">
+                {customer.full_name[0]}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+              <div className="flex items-center gap-1.5 text-navy-500"><Phone className="w-3.5 h-3.5" /> {customer.phone}</div>
+              {customer.email && <div className="flex items-center gap-1.5 text-navy-500"><Mail className="w-3.5 h-3.5" /> {customer.email}</div>}
+              {customer.id_proof_number && <div className="flex items-center gap-1.5 text-navy-500"><CreditCard className="w-3.5 h-3.5" /> {customer.id_proof_number}</div>}
+              {customer.address && <div className="flex items-center gap-1.5 text-navy-500 col-span-2"><MapPin className="w-3.5 h-3.5" /> {customer.address}</div>}
             </div>
-          )}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            <div className="flex items-center gap-1.5 text-navy-500"><Phone className="w-3.5 h-3.5" /> {customer.phone}</div>
-            {customer.email && <div className="flex items-center gap-1.5 text-navy-500"><Mail className="w-3.5 h-3.5" /> {customer.email}</div>}
-            {customer.id_proof_number && <div className="flex items-center gap-1.5 text-navy-500"><CreditCard className="w-3.5 h-3.5" /> {customer.id_proof_number}</div>}
-            {customer.address && <div className="flex items-center gap-1.5 text-navy-500 col-span-2"><MapPin className="w-3.5 h-3.5" /> {customer.address}</div>}
           </div>
+          {onEdit && (
+            <Button variant="secondary" icon={Pencil} size="sm" onClick={() => onEdit(customer)}>Edit</Button>
+          )}
         </div>
+
+        {(customer.id_proof_photo_front || customer.id_proof_photo_back || customer.driving_license_photo) && (
+          <div>
+            <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">ID Documents</p>
+            <div className="grid grid-cols-3 gap-3">
+              {customer.id_proof_photo_front && (
+                <div>
+                  <p className="text-xs text-navy-400 mb-1">ID Proof — Front</p>
+                  <img src={customer.id_proof_photo_front} alt="ID Front" className="w-full h-28 object-cover rounded-lg border border-navy-100" />
+                </div>
+              )}
+              {customer.id_proof_photo_back && (
+                <div>
+                  <p className="text-xs text-navy-400 mb-1">ID Proof — Back</p>
+                  <img src={customer.id_proof_photo_back} alt="ID Back" className="w-full h-28 object-cover rounded-lg border border-navy-100" />
+                </div>
+              )}
+              {customer.driving_license_photo && (
+                <div>
+                  <p className="text-xs text-navy-400 mb-1">Driving License</p>
+                  <img src={customer.driving_license_photo} alt="Driving License" className="w-full h-28 object-cover rounded-lg border border-navy-100" />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div>
           <h4 className="text-sm font-semibold text-navy-800 mb-3">Rental History</h4>

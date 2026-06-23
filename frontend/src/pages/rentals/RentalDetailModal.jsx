@@ -228,6 +228,32 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onDownload }) {
         <Button variant="secondary" icon={FileText} onClick={() => onDownload('agreement')}>Agreement PDF</Button>
       </div>
 
+      {(rental.customer_detail?.id_proof_photo_front || rental.customer_detail?.id_proof_photo_back || rental.customer_detail?.driving_license_photo) && (
+        <div>
+          <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">Customer ID Documents</p>
+          <div className="grid grid-cols-3 gap-3">
+            {rental.customer_detail.id_proof_photo_front && (
+              <div>
+                <p className="text-xs text-navy-400 mb-1">ID Proof — Front</p>
+                <img src={rental.customer_detail.id_proof_photo_front} alt="ID Front" className="w-full h-24 object-cover rounded-lg border border-navy-100" />
+              </div>
+            )}
+            {rental.customer_detail.id_proof_photo_back && (
+              <div>
+                <p className="text-xs text-navy-400 mb-1">ID Proof — Back</p>
+                <img src={rental.customer_detail.id_proof_photo_back} alt="ID Back" className="w-full h-24 object-cover rounded-lg border border-navy-100" />
+              </div>
+            )}
+            {rental.customer_detail.driving_license_photo && (
+              <div>
+                <p className="text-xs text-navy-400 mb-1">Driving License</p>
+                <img src={rental.customer_detail.driving_license_photo} alt="Driving License" className="w-full h-24 object-cover rounded-lg border border-navy-100" />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {rental.payments?.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">Payment History</p>

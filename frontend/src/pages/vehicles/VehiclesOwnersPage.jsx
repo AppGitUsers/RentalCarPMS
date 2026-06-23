@@ -221,12 +221,16 @@ export default function VehiclesOwnersPage() {
         open={vehicleFormOpen} onClose={() => setVehicleFormOpen(false)} vehicle={editingVehicle}
         owners={owners} onSaved={loadVehicles}
       />
-      <VehicleDetailModal open={!!viewingVehicle} onClose={() => setViewingVehicle(null)} vehicle={viewingVehicle} />
+      <VehicleDetailModal
+        open={!!viewingVehicle} onClose={() => setViewingVehicle(null)} vehicle={viewingVehicle}
+        onEdit={(v) => { setViewingVehicle(null); setEditingVehicle(v); setVehicleFormOpen(true); }}
+      />
 
       <OwnerFormModal open={ownerFormOpen} onClose={() => setOwnerFormOpen(false)} owner={editingOwner} onSaved={loadOwners} />
       <OwnerDetailModal
         open={!!viewingOwner} onClose={() => setViewingOwner(null)} owner={viewingOwner}
         onPayoutComplete={loadOwners}
+        onEdit={(o) => { setViewingOwner(null); setEditingOwner(o); setOwnerFormOpen(true); }}
       />
     </div>
   );
