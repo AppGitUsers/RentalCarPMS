@@ -137,9 +137,6 @@ class Rental(models.Model):
         self.actual_end = actual_end or timezone.now()
         self.odometer_end = odometer_end
 
-        elapsed_hours = Decimal((self.actual_end - self.actual_start).total_seconds()) / Decimal(3600)
-        self.base_amount = self.compute_base_amount_for_hours(elapsed_hours)
-
         # Late fee: only if returned after scheduled_end + grace period.
         grace = self.grace_period_minutes_snapshot
         deadline = self.scheduled_end + timezone.timedelta(minutes=grace)
