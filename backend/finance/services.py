@@ -31,7 +31,7 @@ def get_finance_summary(month: int, year: int):
     owner_payouts_qs = OwnerPayout.objects.filter(paid_at__year=year, paid_at__month=month)
     total_owner_payouts = owner_payouts_qs.aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-    salary_qs = SalaryPayment.objects.filter(year=year, month=month, is_paid=True)
+    salary_qs = SalaryPayment.objects.filter(paid_at__year=year, paid_at__month=month, is_paid=True)
     total_salary_paid = salary_qs.aggregate(total=Sum('final_amount'))['total'] or Decimal('0.00')
 
     custom_income_qs = FinanceEntry.objects.filter(entry_type='income', date__year=year, date__month=month)
@@ -94,7 +94,7 @@ def get_monthly_trend(year: int):
             paid_at__year=year, paid_at__month=month,
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         salary = SalaryPayment.objects.filter(
-            year=year, month=month, is_paid=True,
+            paid_at__year=year, paid_at__month=month, is_paid=True,
         ).aggregate(total=Sum('final_amount'))['total'] or Decimal('0.00')
         custom_expense = FinanceEntry.objects.filter(
             entry_type='expense', date__year=year, date__month=month,
