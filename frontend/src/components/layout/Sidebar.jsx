@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, CarFront,
+  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, CarFront, Fingerprint,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils/cn';
@@ -61,6 +61,15 @@ export default function Sidebar() {
             <div className="text-[11px] text-navy-400">Administrator</div>
           </div>
         </div>
+        <a
+          href="/kiosk"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-navy-300 hover:bg-navy-800 hover:text-white transition-colors mb-1"
+        >
+          <Fingerprint className="w-[18px] h-[18px]" />
+          Staff Kiosk
+        </a>
         <button
           onClick={logout}
           className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-navy-300 hover:bg-navy-800 hover:text-white transition-colors"

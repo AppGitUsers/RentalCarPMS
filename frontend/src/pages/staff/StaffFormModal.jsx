@@ -16,10 +16,10 @@ const ROLE_OPTIONS = [
 
 const EMPTY_FORM = {
   full_name: '', phone: '', email: '', role: 'driver', monthly_salary: '',
-  date_joined: '', address: '', id_proof_number: '', notes: '',
+  date_joined: '', default_shift: '', address: '', id_proof_number: '', notes: '',
 };
 
-export default function StaffFormModal({ open, onClose, staff, onSaved }) {
+export default function StaffFormModal({ open, onClose, staff, shifts = [], onSaved }) {
   const { showToast } = useToast();
   const [form, setForm] = useState(EMPTY_FORM);
   const [photoFile, setPhotoFile] = useState(null);
@@ -31,8 +31,9 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
       setForm({
         full_name: staff.full_name || '', phone: staff.phone || '', email: staff.email || '',
         role: staff.role || 'driver', monthly_salary: staff.monthly_salary || '',
-        date_joined: staff.date_joined || '', address: staff.address || '',
-        id_proof_number: staff.id_proof_number || '', notes: staff.notes || '',
+        date_joined: staff.date_joined || '',
+        default_shift: staff.default_shift ?? '',
+        address: staff.address || '', id_proof_number: staff.id_proof_number || '', notes: staff.notes || '',
       });
     } else {
       setForm(EMPTY_FORM);
@@ -49,15 +50,15 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
     if (!form.phone.trim()) newErrors.phone = 'Required';
     if (!form.monthly_salary) newErrors.monthly_salary = 'Required';
     if (!form.date_joined) newErrors.date_joined = 'Required';
-    if (Object.keys(newErrors).length) {
-      setErrors(newErrors);
-      return;
-    }
+    if (Object.keys(newErrors).length) { setErrors(newErrors); return; }
 
     setSaving(true);
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([k, v]) => formData.append(k, v ?? ''));
+      Object.entries(form).forEach(([k, v]) => {
+        // Send empty string for null FK — server treats it as clearing the FK.
+        formData.append(k, v ?? '');
+      });
       if (photoFile) formData.append('photo', photoFile);
 
       if (staff) {
@@ -75,6 +76,14 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
       setSaving(false);
     }
   };
+
+  const shiftOptions = [
+    { value: '', label: 'No shift assigned' },
+    ...shifts.filter((s) => s.is_active).map((s) => ({
+      value: s.id,
+      label: `${s.name}  (${s.start_time}–${s.end_time})`,
+    })),
+  ];
 
   return (
     <Modal
@@ -108,6 +117,15 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
           <Input label="Monthly Salary (₹)" type="number" required value={form.monthly_salary} error={errors.monthly_salary}
             onChange={(e) => update('monthly_salary', e.target.value)} />
         </div>
+
+        <Select
+          label="Default Shift"
+          options={shiftOptions}
+          value={form.default_shift}
+          onChange={(e) => update('default_shift', e.target.value)}
+          hint="Attendance times will auto-fill from this shift when marking present"
+        />
+
         <Input label="ID Proof Number" value={form.id_proof_number} onChange={(e) => update('id_proof_number', e.target.value)} />
         <TextArea label="Address" value={form.address} onChange={(e) => update('address', e.target.value)} rows={2} />
         <TextArea label="Notes" value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} />
