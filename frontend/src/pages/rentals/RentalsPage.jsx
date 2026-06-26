@@ -21,6 +21,13 @@ const STATUS_TABS = [
   { key: 'cancelled', label: 'Cancelled' },
 ];
 
+const PAYMENT_TABS = [
+  { key: '', label: 'All Payments' },
+  { key: 'pending', label: 'Pending' },
+  { key: 'partial', label: 'Partially Paid' },
+  { key: 'paid', label: 'Paid' },
+];
+
 export default function RentalsPage() {
   const { settings } = useSettings();
   const symbol = settings?.currency_symbol || '₹';
@@ -80,22 +87,44 @@ export default function RentalsPage() {
           </Card>
         )}
 
-        <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-          <div className="flex gap-2 flex-wrap">
-            {STATUS_TABS.map((t) => (
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
+            <div className="flex gap-2 flex-wrap">
+              {STATUS_TABS.map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setStatusFilter(t.key)}
+                  className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    statusFilter === t.key ? 'bg-navy-800 text-white' : 'bg-white text-navy-500 border border-navy-200 hover:bg-navy-50'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <div className="w-full sm:w-72">
+              <Input icon={Search} placeholder="Search customer, phone, registration..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="text-xs text-navy-400 font-medium">Payment:</span>
+            {PAYMENT_TABS.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setStatusFilter(t.key)}
-                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  statusFilter === t.key ? 'bg-navy-800 text-white' : 'bg-white text-navy-500 border border-navy-200 hover:bg-navy-50'
+                onClick={() => setPaymentFilter(t.key)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                  paymentFilter === t.key
+                    ? t.key === 'paid'    ? 'bg-success-500 text-white'
+                      : t.key === 'partial' ? 'bg-amber-500 text-white'
+                      : t.key === 'pending' ? 'bg-danger-500 text-white'
+                      : 'bg-navy-800 text-white'
+                    : 'bg-white text-navy-500 border border-navy-200 hover:bg-navy-50'
                 }`}
               >
                 {t.label}
               </button>
             ))}
-          </div>
-          <div className="w-full sm:w-72">
-            <Input icon={Search} placeholder="Search customer, phone, registration..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
 
