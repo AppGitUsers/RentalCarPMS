@@ -13,6 +13,7 @@ from core.utils.pdf import build_agreement_pdf, build_invoice_pdf
 from core.utils.qr import generate_upi_qr_base64
 from settings_app.models import ApplicationSettings
 
+from .filters import RentalFilter
 from .models import Rental, RentalPayment
 from .serializers import (
     RentalCreateSerializer, RentalDetailSerializer, RentalListSerializer,
@@ -23,7 +24,7 @@ class RentalViewSet(viewsets.ModelViewSet):
     queryset = Rental.objects.select_related('customer', 'vehicle', 'vehicle__owner').all().order_by('-created_at')
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['status', 'payment_status', 'payment_timing', 'vehicle', 'customer']
+    filterset_class = RentalFilter
     search_fields = ['customer__full_name', 'customer__phone', 'vehicle__registration_number', 'destination']
     ordering_fields = ['created_at', 'scheduled_start', 'scheduled_end', 'total_amount']
 
