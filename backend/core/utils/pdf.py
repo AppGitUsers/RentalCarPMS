@@ -117,7 +117,15 @@ def build_invoice_pdf(rental, settings_obj) -> bytes:
     charge_rows = [["Description", "Amount"]]
     charge_rows.append(["Base Rental Charge", f"{sym}{rental.base_amount}"])
     if rental.late_fee_amount and rental.late_fee_amount > 0:
-        charge_rows.append(["Late Return Fee", f"{sym}{rental.late_fee_amount}"])
+        from math import ceil
+        from django.utils import timezone as tz
+        late_hrs = 0
+        if rental.actual_end and rental.scheduled_end:
+            deadline = rental.scheduled_end + tz.timedelta(minutes=int(rental.grace_period_minutes_snapshot or 0))
+            if rental.actual_end > deadline:
+                late_hrs = ceil((rental.actual_end - deadline).total_seconds() / 3600)
+        label = f"Late Return Fee ({late_hrs}h × {sym}{rental.late_fee_per_hour_snapshot}/hr)" if late_hrs else "Late Return Fee"
+        charge_rows.append([label, f"{sym}{rental.late_fee_amount}"])
     if rental.extra_km_amount and rental.extra_km_amount > 0:
         charge_rows.append(["Extra KM Charge", f"{sym}{rental.extra_km_amount}"])
     if rental.damage_charge_amount and rental.damage_charge_amount > 0:

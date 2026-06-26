@@ -41,6 +41,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
     balance_due = serializers.SerializerMethodField()
     live_estimate = serializers.SerializerMethodField()
     km_covered = serializers.SerializerMethodField()
+    late_hours_billed = serializers.SerializerMethodField()
 
     class Meta:
         model = Rental
@@ -53,7 +54,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'daily_rate_snapshot', 'gst_percent_snapshot', 'owner_share_percent_snapshot',
             'late_fee_per_hour_snapshot', 'extra_km_charge_snapshot', 'free_km_total_snapshot',
             'grace_period_minutes_snapshot',
-            'base_amount', 'late_fee_amount', 'extra_km_amount', 'damage_charge_amount',
+            'base_amount', 'late_fee_amount', 'late_hours_billed', 'extra_km_amount', 'damage_charge_amount',
             'damage_notes', 'gst_amount', 'total_amount', 'amount_paid', 'payment_status',
             'status', 'closing_notes', 'created_at', 'updated_at', 'closed_at',
             'payments', 'balance_due', 'live_estimate', 'km_covered',
@@ -78,6 +79,16 @@ class RentalDetailSerializer(serializers.ModelSerializer):
 
     def get_km_covered(self, obj):
         return obj.km_covered()
+
+    def get_late_hours_billed(self, obj):
+        if not obj.actual_end or not obj.scheduled_end or not obj.late_fee_amount or obj.late_fee_amount == 0:
+            return 0
+        from django.utils import timezone as tz
+        from math import ceil
+        deadline = obj.scheduled_end + tz.timedelta(minutes=int(obj.grace_period_minutes_snapshot or 0))
+        if obj.actual_end <= deadline:
+            return 0
+        return ceil((obj.actual_end - deadline).total_seconds() / 3600)
 
 
 class RentalCreateSerializer(serializers.ModelSerializer):

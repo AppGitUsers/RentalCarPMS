@@ -199,7 +199,13 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onDownload }) {
 
       <div className="bg-navy-50/60 border border-navy-100 rounded-xl p-4 space-y-2">
         <ChargeRow label="Base Amount" value={formatCurrency(rental.base_amount, symbol)} />
-        {Number(rental.late_fee_amount) > 0 && <ChargeRow label="Late Fee" value={formatCurrency(rental.late_fee_amount, symbol)} highlight="danger" />}
+        {Number(rental.late_fee_amount) > 0 && (
+          <ChargeRow
+            label={`Late Fee${rental.late_hours_billed ? ` — ${rental.late_hours_billed}h × ${formatCurrency(rental.late_fee_per_hour_snapshot, symbol)}/hr` : ''}`}
+            value={formatCurrency(rental.late_fee_amount, symbol)}
+            highlight="danger"
+          />
+        )}
         {Number(rental.extra_km_amount) > 0 && <ChargeRow label="Extra KM Charge" value={formatCurrency(rental.extra_km_amount, symbol)} highlight="danger" />}
         {Number(rental.damage_charge_amount) > 0 && <ChargeRow label="Damage Charge" value={formatCurrency(rental.damage_charge_amount, symbol)} highlight="danger" />}
         <ChargeRow label={`GST (${rental.gst_percent_snapshot}%)`} value={formatCurrency(rental.gst_amount, symbol)} />
