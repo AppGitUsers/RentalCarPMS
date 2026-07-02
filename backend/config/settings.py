@@ -82,6 +82,7 @@ if env('USE_SQLITE', default=False, cast=bool):
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
+            'CONN_MAX_AGE': 600,
         }
     }
 else:
@@ -93,6 +94,7 @@ else:
             'PASSWORD': env('DB_PASSWORD', default='postgres'),
             'HOST': env('DB_HOST', default='localhost'),
             'PORT': env('DB_PORT', default='5432'),
+            'CONN_MAX_AGE': 600,
         }
     }
 
