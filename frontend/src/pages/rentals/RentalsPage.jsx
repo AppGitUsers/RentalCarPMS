@@ -50,21 +50,21 @@ export default function RentalsPage() {
 
   const clearDateFilters = () => { setStartFrom(''); setStartTo(''); setEndFrom(''); setEndTo(''); };
 
+  useEffect(() => {
+    rentalsApi.getActiveRentals().then(setActiveRentals);
+  }, []);
+
   const load = useCallback(() => {
     setLoading(true);
-    Promise.all([
-      rentalsApi.getActiveRentals(),
-      rentalsApi.listRentals({
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-        payment_status: paymentFilter || undefined,
-        scheduled_start_after:  startFrom || undefined,
-        scheduled_start_before: startTo   || undefined,
-        scheduled_end_after:    endFrom   || undefined,
-        scheduled_end_before:   endTo     || undefined,
-      }),
-    ]).then(([active, list]) => {
-      setActiveRentals(active);
+    rentalsApi.listRentals({
+      search: debouncedSearch || undefined,
+      status: statusFilter || undefined,
+      payment_status: paymentFilter || undefined,
+      scheduled_start_after:  startFrom || undefined,
+      scheduled_start_before: startTo   || undefined,
+      scheduled_end_after:    endFrom   || undefined,
+      scheduled_end_before:   endTo     || undefined,
+    }).then((list) => {
       setRentals(list.results || list);
     }).finally(() => setLoading(false));
   }, [debouncedSearch, statusFilter, paymentFilter, startFrom, startTo, endFrom, endTo]);

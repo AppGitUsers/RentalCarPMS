@@ -28,6 +28,21 @@ class RentalViewSet(viewsets.ModelViewSet):
     search_fields = ['customer__full_name', 'customer__phone', 'vehicle__registration_number', 'destination']
     ordering_fields = ['created_at', 'scheduled_start', 'scheduled_end', 'total_amount']
 
+    def get_queryset(self):
+        if self.action in ('list', 'active_list', 'pending_list'):
+            qs = Rental.objects.select_related('customer', 'vehicle').all().order_by('-created_at')
+            if self.action == 'list':
+                has_date_range = any(
+                    self.request.query_params.get(p)
+                    for p in ('scheduled_start_after', 'scheduled_start_before',
+                              'scheduled_end_after', 'scheduled_end_before')
+                )
+                if not has_date_range:
+                    thirty_days_ago = timezone.now() - timezone.timedelta(days=30)
+                    qs = qs.filter(created_at__gte=thirty_days_ago)
+            return qs
+        return super().get_queryset()
+
     def get_serializer_class(self):
         if self.action == 'list':
             return RentalListSerializer
