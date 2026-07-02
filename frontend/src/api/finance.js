@@ -42,3 +42,11 @@ export async function downloadFinanceExcel(month, year) {
   });
   return resp.data;
 }
+
+export async function downloadFinanceExcelRange(dateFrom, dateTo) {
+  const resp = await client.get('/finance/export/range/', {
+    params: { date_from: dateFrom, date_to: dateTo },
+    responseType: 'blob',
+  });
+  return resp.data;
+}

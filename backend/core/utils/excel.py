@@ -21,7 +21,7 @@ def _autosize(ws):
         ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(max(length + 2, 10), 40)
 
 
-def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month, year) -> bytes:
+def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month=None, year=None, label=None) -> bytes:
     """
     Sheet 1: every rental order in the period - rental id, customer name/number,
              vehicle number, base amount, gst %, gst amount, total.

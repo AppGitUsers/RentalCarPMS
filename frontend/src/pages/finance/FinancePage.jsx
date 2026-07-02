@@ -29,6 +29,9 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true);
   const [entryModalOpen, setEntryModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [rangeFrom, setRangeFrom] = useState('');
+  const [rangeTo, setRangeTo] = useState('');
+  const [exportingRange, setExportingRange] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -71,6 +74,27 @@ export default function FinancePage() {
     }
   };
 
+  const handleExportRange = async () => {
+    if (!rangeFrom || !rangeTo) { showToast('Please select both From and To dates', 'error'); return; }
+    if (rangeFrom > rangeTo) { showToast('From date must be before To date', 'error'); return; }
+    setExportingRange(true);
+    try {
+      const blob = await financeApi.downloadFinanceExcelRange(rangeFrom, rangeTo);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Finance_Report_${rangeFrom}_to_${rangeTo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      showToast('Could not export range report', 'error');
+    } finally {
+      setExportingRange(false);
+    }
+  };
+
   const chartData = trend.map((t) => ({
     name: MONTH_NAMES[t.month - 1].slice(0, 3),
     income: Number(t.income),
@@ -93,10 +117,30 @@ export default function FinancePage() {
       />
 
       <div className="p-8 space-y-6">
-        <div className="flex items-center justify-end gap-2">
-          <button onClick={() => shiftMonth(-1)} className="p-1.5 rounded-lg hover:bg-white border border-navy-200 text-navy-400"><ChevronLeft className="w-4 h-4" /></button>
-          <span className="text-sm font-medium text-navy-700 w-36 text-center bg-white border border-navy-200 rounded-lg py-1.5">{MONTH_NAMES[month - 1]} {year}</span>
-          <button onClick={() => shiftMonth(1)} className="p-1.5 rounded-lg hover:bg-white border border-navy-200 text-navy-400"><ChevronRight className="w-4 h-4" /></button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Month selector */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => shiftMonth(-1)} className="p-1.5 rounded-lg hover:bg-white border border-navy-200 text-navy-400"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-sm font-medium text-navy-700 w-36 text-center bg-white border border-navy-200 rounded-lg py-1.5">{MONTH_NAMES[month - 1]} {year}</span>
+            <button onClick={() => shiftMonth(1)} className="p-1.5 rounded-lg hover:bg-white border border-navy-200 text-navy-400"><ChevronRight className="w-4 h-4" /></button>
+          </div>
+
+          {/* Date range export */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-navy-400 font-medium whitespace-nowrap">Export range:</span>
+            <input
+              type="date" value={rangeFrom} onChange={(e) => setRangeFrom(e.target.value)}
+              className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-navy-300"
+            />
+            <span className="text-xs text-navy-400">to</span>
+            <input
+              type="date" value={rangeTo} onChange={(e) => setRangeTo(e.target.value)}
+              className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-navy-300"
+            />
+            <Button size="sm" variant="secondary" icon={Download} onClick={handleExportRange} loading={exportingRange}>
+              Export
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
