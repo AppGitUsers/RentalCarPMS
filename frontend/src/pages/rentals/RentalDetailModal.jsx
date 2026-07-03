@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  MapPin, Gauge, Calendar, Download, FileText, CreditCard, AlertTriangle, CheckCircle2,
+  MapPin, Gauge, Calendar, Download, FileText, CreditCard, AlertTriangle, CheckCircle2, CalendarPlus,
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -36,6 +36,8 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   const [damageNotes, setDamageNotes] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [extensionDays, setExtensionDays] = useState('1');
+  const [extensionRate, setExtensionRate] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -97,6 +99,28 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
     }
   };
 
+  const handleExtend = async () => {
+    if (!extensionDays || Number(extensionDays) < 1) {
+      showToast('Enter at least 1 day to extend', 'error');
+      return;
+    }
+    setWorking(true);
+    try {
+      await rentalsApi.extendRental(rental.id, {
+        extension_days: Number(extensionDays),
+        ...(extensionRate ? { daily_rate: extensionRate } : {}),
+      });
+      showToast('Rental extended successfully');
+      load();
+      setMode('view');
+      onChanged?.();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not extend rental', 'error');
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const handleAddPayment = async () => {
     if (!paymentAmount) {
       showToast('Enter a payment amount', 'error');
@@ -148,6 +172,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
           onStart={() => { setOdometerStart(rental.odometer_start || ''); setMode('start'); }}
           onClose={() => { setOdometerEnd(''); setDamageAmount('0'); setDamageNotes(''); setMode('close'); }}
           onPay={() => { setPaymentAmount(rental.balance_due); setMode('pay'); }}
+          onExtend={() => { setExtensionDays('1'); setExtensionRate(String(rental.daily_rate_snapshot)); setMode('extend'); }}
           onDownload={handleDownload}
         />
       ) : mode === 'start' ? (
@@ -166,6 +191,14 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
           damageAmount={damageAmount} setDamageAmount={setDamageAmount}
           damageNotes={damageNotes} setDamageNotes={setDamageNotes}
           onCancel={() => setMode('view')} onConfirm={handleClose} working={working}
+        />
+      ) : mode === 'extend' ? (
+        <ExtendMode
+          rental={rental} symbol={symbol}
+          extensionDays={extensionDays} setExtensionDays={setExtensionDays}
+          extensionRate={extensionRate} setExtensionRate={setExtensionRate}
+          freeKmPerDay={settings?.free_km_per_day || 0}
+          onCancel={() => setMode('view')} onConfirm={handleExtend} working={working}
         />
       ) : mode === 'pay' ? (
         <div className="space-y-4">
@@ -188,7 +221,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   );
 }
 
-function ViewMode({ rental, symbol, onStart, onClose, onPay, onDownload }) {
+function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownload }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -232,6 +265,9 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onDownload }) {
         )}
         {rental.status === 'active' && (
           <Button variant="success" icon={CheckCircle2} onClick={onClose}>Close & Return Vehicle</Button>
+        )}
+        {(rental.status === 'booked' || rental.status === 'active') && (
+          <Button variant="secondary" icon={CalendarPlus} onClick={onExtend}>Extend Rental</Button>
         )}
         {rental.balance_due > 0 && rental.status !== 'cancelled' && (
           <Button variant="primary" icon={CreditCard} onClick={onPay}>Record Payment</Button>
@@ -336,6 +372,53 @@ function InfoMini({ icon: Icon, label, value }) {
     <div className="bg-white border border-navy-100 rounded-lg px-3.5 py-2.5">
       <p className="text-xs text-navy-400 flex items-center gap-1"><Icon className="w-3 h-3" /> {label}</p>
       <p className="text-sm font-medium text-navy-800 mt-0.5">{value}</p>
+    </div>
+  );
+}
+
+function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extensionRate, setExtensionRate, freeKmPerDay, onCancel, onConfirm, working }) {
+  const days = Number(extensionDays) || 0;
+  const rate = Number(extensionRate) || Number(rental.daily_rate_snapshot);
+  const additionalBase = rate * days;
+  const additionalGst = additionalBase * (Number(rental.gst_percent_snapshot) / 100);
+  const additionalTotal = additionalBase + additionalGst;
+  const newTotal = Number(rental.total_amount) + additionalTotal;
+  const newFreeKm = rental.free_km_total_snapshot + (Number(freeKmPerDay) * days);
+  const newEnd = days > 0 ? new Date(new Date(rental.scheduled_end).getTime() + days * 86400000) : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Extend by (days)" type="number" min="1"
+          value={extensionDays} onChange={(e) => setExtensionDays(e.target.value)}
+        />
+        <Input
+          label="Rate per Day" type="number"
+          value={extensionRate} onChange={(e) => setExtensionRate(e.target.value)}
+          hint={`Booking rate: ${symbol}${rental.daily_rate_snapshot}/day`}
+        />
+      </div>
+
+      {days > 0 && (
+        <div className="bg-navy-50/60 border border-navy-100 rounded-xl p-4 space-y-2">
+          <ChargeRow label="New Scheduled End" value={formatDateTime(newEnd?.toISOString())} />
+          <ChargeRow label="Free KM Allowance" value={`${newFreeKm} km`} />
+          <ChargeRow label={`Extension (${days} day(s) × ${symbol}${rate})`} value={formatCurrency(additionalBase, symbol)} />
+          {Number(rental.gst_percent_snapshot) > 0 && (
+            <ChargeRow label={`GST (${rental.gst_percent_snapshot}%)`} value={formatCurrency(additionalGst, symbol)} />
+          )}
+          <div className="border-t border-navy-200 pt-2 mt-1">
+            <ChargeRow label="Additional Charge" value={formatCurrency(additionalTotal, symbol)} bold />
+            <ChargeRow label="New Rental Total" value={formatCurrency(newTotal, symbol)} bold />
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>Cancel</Button>
+        <Button variant="primary" className="flex-1" onClick={onConfirm} loading={working}>Confirm Extension</Button>
+      </div>
     </div>
   );
 }

@@ -59,6 +59,11 @@ export async function downloadRentalPdf(id, type = 'invoice') {
   return resp.data;
 }
 
+export async function extendRental(id, data) {
+  const resp = await client.post(`/rentals/${id}/extend/`, data);
+  return resp.data;
+}
+
 export async function getActiveRentals() {
   const resp = await client.get('/rentals/active_list/');
   return resp.data;

@@ -125,6 +125,47 @@ class RentalViewSet(viewsets.ModelViewSet):
                 rental.vehicle.save(update_fields=['status'])
         return Response(RentalDetailSerializer(rental).data)
 
+    @action(detail=True, methods=['post'])
+    def extend(self, request, pk=None):
+        """Extend an active/booked rental by N days from its current scheduled_end."""
+        rental = self.get_object()
+        if rental.status not in ('booked', 'active'):
+            return Response({'detail': 'Only booked or active rentals can be extended.'}, status=400)
+
+        try:
+            extension_days = int(request.data.get('extension_days', 0))
+        except (ValueError, TypeError):
+            return Response({'detail': 'extension_days must be a valid integer.'}, status=400)
+        if extension_days < 1:
+            return Response({'detail': 'extension_days must be at least 1.'}, status=400)
+
+        daily_rate_input = request.data.get('daily_rate')
+        if daily_rate_input is not None:
+            try:
+                extension_rate = Decimal(str(daily_rate_input))
+            except Exception:
+                return Response({'detail': 'Invalid daily_rate.'}, status=400)
+        else:
+            extension_rate = rental.daily_rate_snapshot
+
+        settings_obj = ApplicationSettings.load()
+
+        additional_base = extension_rate * extension_days
+        new_base = rental.base_amount + additional_base
+        new_gst = (new_base * rental.gst_percent_snapshot / 100).quantize(Decimal('0.01'))
+        new_total = (new_base + new_gst).quantize(Decimal('0.01'))
+
+        with transaction.atomic():
+            rental.scheduled_end = rental.scheduled_end + timezone.timedelta(days=extension_days)
+            rental.booked_days = rental.booked_days + extension_days
+            rental.free_km_total_snapshot = rental.free_km_total_snapshot + (settings_obj.free_km_per_day * extension_days)
+            rental.base_amount = new_base
+            rental.gst_amount = new_gst
+            rental.total_amount = new_total
+            rental.save()
+
+        return Response(RentalDetailSerializer(rental).data)
+
     @action(detail=True, methods=['get'])
     def estimate(self, request, pk=None):
         """Live running-total estimate, used by frontend before closing to preview charges."""
