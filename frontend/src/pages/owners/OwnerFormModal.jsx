@@ -9,7 +9,7 @@ import { useToast } from '../../components/ui/Toast';
 
 const EMPTY_FORM = {
   name: '', phone: '', alternate_phone: '', email: '', address: '',
-  upi_id: '', upi_payee_name: '', default_share_percent: '', id_proof_number: '', notes: '',
+  upi_id: '', upi_payee_name: '', id_proof_number: '', notes: '',
 };
 
 export default function OwnerFormModal({ open, onClose, owner, onSaved }) {
@@ -24,7 +24,7 @@ export default function OwnerFormModal({ open, onClose, owner, onSaved }) {
       setForm({
         name: owner.name || '', phone: owner.phone || '', alternate_phone: owner.alternate_phone || '',
         email: owner.email || '', address: owner.address || '', upi_id: owner.upi_id || '',
-        upi_payee_name: owner.upi_payee_name || '', default_share_percent: owner.default_share_percent ?? '',
+        upi_payee_name: owner.upi_payee_name || '',
         id_proof_number: owner.id_proof_number || '', notes: owner.notes || '',
       });
     } else {
@@ -104,14 +104,6 @@ export default function OwnerFormModal({ open, onClose, owner, onSaved }) {
             <Input label="UPI Payee Display Name" value={form.upi_payee_name}
               onChange={(e) => update('upi_payee_name', e.target.value)} placeholder="Defaults to owner name" />
           </div>
-          <Input
-            label="Owner Share Override (%)"
-            type="number" min="0" max="100" step="0.01"
-            value={form.default_share_percent}
-            onChange={(e) => update('default_share_percent', e.target.value)}
-            placeholder="Leave blank to use the global default from Settings"
-            hint="Overrides the global default % for all of this owner's vehicles (can still be overridden per-vehicle)"
-          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

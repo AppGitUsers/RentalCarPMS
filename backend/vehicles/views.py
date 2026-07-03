@@ -5,18 +5,18 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .models import Vehicle, VehicleImage
-from .serializers import VehicleImageSerializer, VehicleListSerializer, VehicleSerializer
+from .models import Vehicle, VehicleImage, VehicleOwnerRate
+from .serializers import VehicleImageSerializer, VehicleListSerializer, VehicleOwnerRateSerializer, VehicleSerializer
 
 
 class VehicleViewSet(viewsets.ModelViewSet):
-    queryset = Vehicle.objects.select_related('owner').all().order_by('registration_number')
+    queryset = Vehicle.objects.select_related('owner', 'owner_rate').all().order_by('registration_number')
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'owner', 'fuel_type', 'transmission', 'is_active']
     search_fields = ['registration_number', 'make', 'model', 'owner__name']
-    ordering_fields = ['registration_number', 'daily_rate', 'created_at']
+    ordering_fields = ['registration_number', 'created_at']
 
     def get_serializer_class(self):
         if self.action == 'list':
@@ -66,6 +66,28 @@ class VehicleViewSet(viewsets.ModelViewSet):
             for r in rentals
         ]
         return Response(data)
+
+    @action(detail=True, methods=['get', 'put'], url_path='rate')
+    def rate(self, request, pk=None):
+        vehicle = self.get_object()
+        if request.method == 'GET':
+            try:
+                r = VehicleOwnerRate.objects.get(vehicle=vehicle)
+                return Response(VehicleOwnerRateSerializer(r).data)
+            except VehicleOwnerRate.DoesNotExist:
+                return Response(None)
+        # PUT — upsert: validate first, then save to avoid NOT NULL violation on create
+        try:
+            r = VehicleOwnerRate.objects.get(vehicle=vehicle)
+            serializer = VehicleOwnerRateSerializer(r, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=200)
+        except VehicleOwnerRate.DoesNotExist:
+            serializer = VehicleOwnerRateSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save(vehicle=vehicle)
+            return Response(serializer.data, status=201)
 
     @action(detail=False, methods=['get'])
     def upcoming_arrivals(self, request):

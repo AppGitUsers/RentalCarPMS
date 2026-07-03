@@ -35,13 +35,6 @@ class Vehicle(models.Model):
 
     primary_photo = models.ImageField(upload_to="vehicles/", blank=True, null=True)
 
-    daily_rate = models.DecimalField(max_digits=10, decimal_places=2)
-    # Override of the global default owner-share % for this specific vehicle.
-    owner_share_percent_override = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        help_text="Optional per-vehicle override of owner share %. Takes priority over owner/global default.",
-    )
-
     current_odometer = models.PositiveIntegerField(default=0, help_text="Latest known odometer reading (km).")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="available")
 
@@ -61,14 +54,24 @@ class Vehicle(models.Model):
     def __str__(self):
         return f"{self.registration_number} ({self.make} {self.model})"
 
-    def effective_owner_share_percent(self):
-        """Resolution order: vehicle override -> owner default -> global setting."""
-        if self.owner_share_percent_override is not None:
-            return self.owner_share_percent_override
-        if self.owner.default_share_percent is not None:
-            return self.owner.default_share_percent
-        from settings_app.models import ApplicationSettings
-        return ApplicationSettings.load().default_owner_share_percent
+
+class VehicleOwnerRate(models.Model):
+    """
+    Per-vehicle pricing and owner payout configuration.
+    vehicle_daily_rate  — what the customer is charged per day.
+    owner_daily_amount  — fixed ₹ the owner receives per booked day.
+    owner_extra_km_percent / owner_damage_percent — % of those charge components that go to the owner.
+    Late fee for owner is derived from owner_daily_amount (half or full day based on the 6-hour rule).
+    """
+    vehicle = models.OneToOneField(Vehicle, on_delete=models.CASCADE, related_name='owner_rate')
+    vehicle_daily_rate = models.DecimalField(max_digits=10, decimal_places=2)
+    owner_daily_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    owner_extra_km_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    owner_damage_percent = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Rate for {self.vehicle.registration_number}"
 
 
 class VehicleImage(models.Model):

@@ -25,7 +25,9 @@ export default function VehicleCard({ vehicle, symbol, onClick }) {
         <p className="text-xs text-navy-400 mt-0.5">{vehicle.registration_number}</p>
         <div className="flex items-center justify-between mt-2.5">
           <span className="text-xs text-navy-400">{vehicle.owner_name}</span>
-          <span className="text-sm font-semibold text-navy-800 tabular-nums">{formatCurrency(vehicle.daily_rate, symbol)}/day</span>
+          <span className="text-sm font-semibold text-navy-800 tabular-nums">
+            {vehicle.vehicle_daily_rate ? `${formatCurrency(vehicle.vehicle_daily_rate, symbol)}/day` : '—'}
+          </span>
         </div>
       </div>
     </div>

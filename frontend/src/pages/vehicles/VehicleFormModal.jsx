@@ -17,8 +17,8 @@ const TRANSMISSION_OPTIONS = [{ value: 'manual', label: 'Manual' }, { value: 'au
 
 const EMPTY_FORM = {
   owner: '', registration_number: '', make: '', model: '', year: '', color: '',
-  seating_capacity: '4', fuel_type: 'petrol', transmission: 'manual', daily_rate: '',
-  owner_share_percent_override: '', current_odometer: '0', rc_number: '',
+  seating_capacity: '4', fuel_type: 'petrol', transmission: 'manual',
+  current_odometer: '0', rc_number: '',
   insurance_expiry: '', permit_expiry: '', fitness_expiry: '', notes: '',
 };
 
@@ -36,7 +36,6 @@ export default function VehicleFormModal({ open, onClose, vehicle, owners, onSav
         make: vehicle.make || '', model: vehicle.model || '', year: vehicle.year || '',
         color: vehicle.color || '', seating_capacity: vehicle.seating_capacity || '4',
         fuel_type: vehicle.fuel_type || 'petrol', transmission: vehicle.transmission || 'manual',
-        daily_rate: vehicle.daily_rate || '', owner_share_percent_override: vehicle.owner_share_percent_override ?? '',
         current_odometer: vehicle.current_odometer ?? '0', rc_number: vehicle.rc_number || '',
         insurance_expiry: vehicle.insurance_expiry || '', permit_expiry: vehicle.permit_expiry || '',
         fitness_expiry: vehicle.fitness_expiry || '', notes: vehicle.notes || '',
@@ -58,7 +57,6 @@ export default function VehicleFormModal({ open, onClose, vehicle, owners, onSav
     if (!form.registration_number.trim()) newErrors.registration_number = 'Required';
     if (!form.make.trim()) newErrors.make = 'Required';
     if (!form.model.trim()) newErrors.model = 'Required';
-    if (!form.daily_rate) newErrors.daily_rate = 'Required';
     if (Object.keys(newErrors).length) {
       setErrors(newErrors);
       return;
@@ -129,18 +127,6 @@ export default function VehicleFormModal({ open, onClose, vehicle, owners, onSav
             onChange={(e) => update('seating_capacity', e.target.value)} />
           <Select label="Fuel Type" options={FUEL_OPTIONS} value={form.fuel_type} onChange={(e) => update('fuel_type', e.target.value)} />
           <Select label="Transmission" options={TRANSMISSION_OPTIONS} value={form.transmission} onChange={(e) => update('transmission', e.target.value)} />
-        </div>
-
-        <div className="bg-navy-50/60 border border-navy-100 rounded-xl p-4">
-          <p className="text-xs font-semibold text-navy-600 uppercase tracking-wide mb-4">Pricing & Ownership Split</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Input label="Daily Rate (₹)" type="number" required value={form.daily_rate} error={errors.daily_rate}
-              onChange={(e) => update('daily_rate', e.target.value)} placeholder="1000" />
-            <Input label="Owner Share Override (%)" type="number" min="0" max="100" step="0.01"
-              value={form.owner_share_percent_override}
-              onChange={(e) => update('owner_share_percent_override', e.target.value)}
-              hint="Leave blank to use the owner's / global default" />
-          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

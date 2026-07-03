@@ -60,7 +60,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
 
   const estimatedTotal = useMemo(() => {
     if (!selectedVehicle) return 0;
-    const base = Number(selectedVehicle.daily_rate) * Number(form.booked_days || 1);
+    const base = Number(selectedVehicle.vehicle_daily_rate) * Number(form.booked_days || 1);
     const gst = base * (Number(settings?.gst_percent || 0) / 100);
     return base + gst;
   }, [selectedVehicle, form.booked_days, settings]);
@@ -82,7 +82,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const vehicleOptions = vehicles.map((v) => ({
     value: v.id,
     label: `${v.registration_number} — ${v.make} ${v.model}`,
-    sublabel: `${formatCurrency(v.daily_rate, symbol)}/day`,
+    sublabel: `${formatCurrency(v.vehicle_daily_rate, symbol)}/day`,
   }));
 
   const validateStep = () => {
@@ -224,7 +224,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
             {selectedVehicle && (
               <div className="bg-navy-50/60 border border-navy-100 rounded-lg px-4 py-3 flex items-center justify-between">
                 <span className="text-sm text-navy-600">
-                  {formatCurrency(selectedVehicle.daily_rate, symbol)}/day × {form.booked_days} day(s)
+                  {formatCurrency(selectedVehicle.vehicle_daily_rate, symbol)}/day × {form.booked_days} day(s)
                 </span>
                 <span className="text-base font-semibold text-navy-900 tabular-nums">
                   ≈ {formatCurrency(estimatedTotal, symbol)} estimated

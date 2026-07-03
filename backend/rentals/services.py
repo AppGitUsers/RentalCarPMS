@@ -29,8 +29,8 @@ def compute_owner_outstanding_balance(owner):
 
 
 def compute_owner_share_for_rental(rental):
-    """The amount owed to the owner for a single closed rental — percentage of base amount only. Late fees, extra KM, and damage charges are kept entirely by the company."""
-    return round(rental.base_amount * (rental.owner_share_percent_snapshot / Decimal('100')), 2)
+    """The amount owed to the owner for a single closed rental — uses VehicleOwnerRate snapshots (per-day amount + late/km/damage shares)."""
+    return rental.computed_owner_payout
 
 
 def unpaid_rentals_for_owner(owner):

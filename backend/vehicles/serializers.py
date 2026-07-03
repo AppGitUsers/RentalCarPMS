@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from owners.models import CarOwner
 
-from .models import Vehicle, VehicleImage
+from .models import Vehicle, VehicleImage, VehicleOwnerRate
 
 
 class VehicleImageSerializer(serializers.ModelSerializer):
@@ -17,27 +17,33 @@ class OwnerMiniSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'phone', 'upi_id']
 
 
+class VehicleOwnerRateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = VehicleOwnerRate
+        fields = [
+            'id', 'vehicle_daily_rate', 'owner_daily_amount',
+            'owner_extra_km_percent', 'owner_damage_percent', 'updated_at',
+        ]
+        read_only_fields = ['id', 'updated_at']
+
+
 class VehicleSerializer(serializers.ModelSerializer):
     owner_detail = OwnerMiniSerializer(source='owner', read_only=True)
     gallery_images = VehicleImageSerializer(many=True, read_only=True)
-    effective_owner_share_percent = serializers.SerializerMethodField()
     active_rental = serializers.SerializerMethodField()
     is_active = serializers.BooleanField(default=True, required=False)
+    owner_rate = VehicleOwnerRateSerializer(read_only=True)
 
     class Meta:
         model = Vehicle
         fields = [
             'id', 'owner', 'owner_detail', 'registration_number', 'make', 'model', 'year',
             'color', 'seating_capacity', 'fuel_type', 'transmission', 'primary_photo',
-            'daily_rate', 'owner_share_percent_override', 'effective_owner_share_percent',
             'current_odometer', 'status', 'insurance_expiry', 'permit_expiry',
             'fitness_expiry', 'rc_number', 'notes', 'is_active', 'created_at', 'updated_at',
-            'gallery_images', 'active_rental',
+            'gallery_images', 'active_rental', 'owner_rate',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
-
-    def get_effective_owner_share_percent(self, obj):
-        return obj.effective_owner_share_percent()
 
     def get_active_rental(self, obj):
         active = obj.rentals.filter(status='active').first()
@@ -53,10 +59,17 @@ class VehicleSerializer(serializers.ModelSerializer):
 
 class VehicleListSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source='owner.name', read_only=True)
+    vehicle_daily_rate = serializers.SerializerMethodField()
 
     class Meta:
         model = Vehicle
         fields = [
             'id', 'registration_number', 'make', 'model', 'year', 'primary_photo',
-            'daily_rate', 'status', 'owner_name', 'current_odometer',
+            'vehicle_daily_rate', 'status', 'owner_name', 'current_odometer',
         ]
+
+    def get_vehicle_daily_rate(self, obj):
+        try:
+            return obj.owner_rate.vehicle_daily_rate
+        except VehicleOwnerRate.DoesNotExist:
+            return None

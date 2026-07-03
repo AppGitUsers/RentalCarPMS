@@ -58,3 +58,13 @@ export async function uploadVehicleGalleryImage(id, file, caption = '') {
 export async function deleteVehicleGalleryImage(vehicleId, imageId) {
   await client.delete(`/vehicles/${vehicleId}/gallery_image/${imageId}/`);
 }
+
+export async function getVehicleRate(id) {
+  const resp = await client.get(`/vehicles/${id}/rate/`);
+  return resp.data;
+}
+
+export async function saveVehicleRate(id, data) {
+  const resp = await client.put(`/vehicles/${id}/rate/`, data);
+  return resp.data;
+}

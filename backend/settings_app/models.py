@@ -33,20 +33,10 @@ class ApplicationSettings(models.Model):
         ),
     )
 
-    # ---- Owner payout ----
-    default_owner_share_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, default=70.00,
-        help_text="Default % of rental revenue that goes to the car owner. Can be overridden per-vehicle.",
-    )
-
     # ---- Charges ----
     gst_percent = models.DecimalField(
         max_digits=5, decimal_places=2, default=0.00,
         help_text="GST % applied on top of the base rental amount across the app.",
-    )
-    late_fee_per_hour = models.DecimalField(
-        max_digits=10, decimal_places=2, default=100.00,
-        help_text="Penalty charged per hour when the vehicle is returned after the booked end time.",
     )
     extra_km_charge_per_km = models.DecimalField(
         max_digits=10, decimal_places=2, default=10.00,

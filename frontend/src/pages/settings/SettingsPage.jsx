@@ -79,19 +79,9 @@ export default function SettingsPage() {
           <CardHeader icon={Percent} title="Pricing & Charges" subtitle="Applied automatically across all new bookings" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Input
-              label="Default Owner Share (%)" type="number" min="0" max="100" step="0.01"
-              value={form.default_owner_share_percent} onChange={(e) => update('default_owner_share_percent', e.target.value)}
-              hint="Applies to all vehicles unless overridden per-owner or per-vehicle"
-            />
-            <Input
               label="GST (%)" type="number" min="0" max="100" step="0.01"
               value={form.gst_percent} onChange={(e) => update('gst_percent', e.target.value)}
               hint="Applied on top of the base rental amount. Default 0%."
-            />
-            <Input
-              label="Late Fee (per hour, ₹)" type="number" value={form.late_fee_per_hour}
-              onChange={(e) => update('late_fee_per_hour', e.target.value)}
-              hint="Charged for each hour past the grace period after scheduled return"
             />
             <Input
               label="Grace Period (minutes)" type="number" value={form.grace_period_minutes}

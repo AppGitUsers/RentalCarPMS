@@ -60,8 +60,6 @@ class Rental(models.Model):
     #      don't retroactively alter historical invoices) ----
     daily_rate_snapshot = models.DecimalField(max_digits=10, decimal_places=2)
     gst_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    owner_share_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=70)
-    late_fee_per_hour_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     extra_km_charge_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     free_km_total_snapshot = models.PositiveIntegerField(default=0, help_text="Free km allowed for the full booking.")
     grace_period_minutes_snapshot = models.PositiveIntegerField(default=30)
@@ -74,6 +72,10 @@ class Rental(models.Model):
     damage_notes = models.TextField(blank=True, default="")
     gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+
+    owner_daily_amount_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    owner_extra_km_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    owner_damage_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=0)
 
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default="pending")
@@ -137,16 +139,16 @@ class Rental(models.Model):
         self.actual_end = actual_end or timezone.now()
         self.odometer_end = odometer_end
 
-        # Late fee: only if returned after scheduled_end + grace period.
-        grace = self.grace_period_minutes_snapshot
-        deadline = self.scheduled_end + timezone.timedelta(minutes=grace)
-        if self.actual_end > deadline:
-            late_hours = Decimal((self.actual_end - deadline).total_seconds()) / Decimal(3600)
-            from math import ceil
-            late_hours_billed = Decimal(ceil(late_hours)) if late_hours > 0 else Decimal(0)
-            self.late_fee_amount = q2(late_hours_billed * Decimal(self.late_fee_per_hour_snapshot))
-        else:
+        # Late fee: half-day if returned within 6 hrs after scheduled_end (net of grace),
+        # full day if beyond 6 hrs. Grace period is a free window inside the 6-hr band.
+        late_delta = self.actual_end - self.scheduled_end
+        grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot))
+        if late_delta <= grace:
             self.late_fee_amount = Decimal("0.00")
+        elif late_delta <= timezone.timedelta(hours=6):
+            self.late_fee_amount = q2(Decimal(str(self.daily_rate_snapshot)) / 2)
+        else:
+            self.late_fee_amount = q2(Decimal(str(self.daily_rate_snapshot)))
 
         # Extra km
         km_covered = max((self.odometer_end or 0) - (self.odometer_start or 0), 0)
@@ -182,6 +184,43 @@ class Rental(models.Model):
         if self.odometer_start is None or self.odometer_end is None:
             return None
         return max(self.odometer_end - self.odometer_start, 0)
+
+    @property
+    def late_fee_type(self):
+        """none / half_day / full_day — based on how late the vehicle was returned."""
+        if not self.actual_end or not self.scheduled_end or not self.late_fee_amount:
+            return None
+        late_delta = self.actual_end - self.scheduled_end
+        grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot or 0))
+        if late_delta <= grace:
+            return None
+        return 'half_day' if late_delta <= timezone.timedelta(hours=6) else 'full_day'
+
+    @property
+    def computed_owner_payout(self):
+        """Suggested owner payout for this rental based on VehicleOwnerRate snapshots."""
+        if self.status != 'closed':
+            return Decimal('0.00')
+        owner_daily = Decimal(str(self.owner_daily_amount_snapshot))
+        base_share = q2(owner_daily * self.booked_days)
+
+        late_share = Decimal('0.00')
+        if self.actual_end and self.scheduled_end and self.late_fee_amount:
+            late_delta = self.actual_end - self.scheduled_end
+            grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot or 0))
+            if late_delta > grace:
+                if late_delta <= timezone.timedelta(hours=6):
+                    late_share = q2(owner_daily / 2)
+                else:
+                    late_share = q2(owner_daily)
+
+        extra_km_share = q2(
+            Decimal(str(self.extra_km_amount)) * Decimal(str(self.owner_extra_km_percent_snapshot)) / 100
+        )
+        damage_share = q2(
+            Decimal(str(self.damage_charge_amount)) * Decimal(str(self.owner_damage_percent_snapshot)) / 100
+        )
+        return q2(base_share + late_share + extra_km_share + damage_share)
 
 
 class RentalPayment(models.Model):

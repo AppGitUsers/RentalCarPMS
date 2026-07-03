@@ -17,7 +17,7 @@ from .serializers import CarOwnerListSerializer, CarOwnerSerializer
 
 
 class CarOwnerViewSet(viewsets.ModelViewSet):
-    queryset = CarOwner.objects.all().order_by('name')
+    queryset = CarOwner.objects.prefetch_related('vehicles__owner_rate').all().order_by('name')
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]

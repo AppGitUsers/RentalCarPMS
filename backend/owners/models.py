@@ -22,13 +22,6 @@ class CarOwner(models.Model):
         help_text="Name to display/encode on the UPI QR. Defaults to owner name if blank.",
     )
 
-    # Per-owner override of the global default owner share %. Null = use
-    # the per-vehicle override if set, else the global default from Settings.
-    default_share_percent = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True,
-        help_text="Optional override of the global owner-share %. Leave blank to use global default.",
-    )
-
     id_proof_number = models.CharField(max_length=50, blank=True, default="")
     id_proof_photo = models.ImageField(upload_to="owners/id_proofs/", blank=True, null=True)
     notes = models.TextField(blank=True, default="")

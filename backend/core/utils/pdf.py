@@ -117,14 +117,13 @@ def build_invoice_pdf(rental, settings_obj) -> bytes:
     charge_rows = [["Description", "Amount"]]
     charge_rows.append(["Base Rental Charge", f"{sym}{rental.base_amount}"])
     if rental.late_fee_amount and rental.late_fee_amount > 0:
-        from math import ceil
-        from django.utils import timezone as tz
-        late_hrs = 0
-        if rental.actual_end and rental.scheduled_end:
-            deadline = rental.scheduled_end + tz.timedelta(minutes=int(rental.grace_period_minutes_snapshot or 0))
-            if rental.actual_end > deadline:
-                late_hrs = ceil((rental.actual_end - deadline).total_seconds() / 3600)
-        label = f"Late Return Fee ({late_hrs}h × {sym}{rental.late_fee_per_hour_snapshot}/hr)" if late_hrs else "Late Return Fee"
+        fee_type = rental.late_fee_type
+        if fee_type == 'half_day':
+            label = "Late Return Fee — Half Day"
+        elif fee_type == 'full_day':
+            label = "Late Return Fee — Full Day"
+        else:
+            label = "Late Return Fee"
         charge_rows.append([label, f"{sym}{rental.late_fee_amount}"])
     if rental.extra_km_amount and rental.extra_km_amount > 0:
         charge_rows.append(["Extra KM Charge", f"{sym}{rental.extra_km_amount}"])
@@ -238,9 +237,10 @@ def build_agreement_pdf(rental, settings_obj) -> bytes:
             elements.append(Paragraph(line.strip(), styles["Body"]))
     elements.append(Spacer(1, 6))
     elements.append(Paragraph(
-        f"Late return is charged at {settings_obj.currency_symbol}{rental.late_fee_per_hour_snapshot} per hour after a "
-        f"grace period of {rental.grace_period_minutes_snapshot} minutes. Extra KM beyond the included "
-        f"{rental.free_km_total_snapshot} km is charged at {settings_obj.currency_symbol}{rental.extra_km_charge_snapshot} per km.",
+        f"Late return policy: a grace period of {rental.grace_period_minutes_snapshot} minutes applies after scheduled return. "
+        f"Returns up to 6 hours late are charged a half-day fee; beyond 6 hours, a full-day fee applies. "
+        f"Extra KM beyond the included {rental.free_km_total_snapshot} km is charged at "
+        f"{settings_obj.currency_symbol}{rental.extra_km_charge_snapshot} per km.",
         styles["Body"],
     ))
     elements.append(Spacer(1, 30))

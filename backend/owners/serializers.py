@@ -1,14 +1,22 @@
 from rest_framework import serializers
 
-from vehicles.models import Vehicle
+from vehicles.models import Vehicle, VehicleOwnerRate
 
 from .models import CarOwner
 
 
 class CarOwnerVehicleMiniSerializer(serializers.ModelSerializer):
+    vehicle_daily_rate = serializers.SerializerMethodField()
+
     class Meta:
         model = Vehicle
-        fields = ['id', 'registration_number', 'make', 'model', 'status', 'primary_photo', 'daily_rate']
+        fields = ['id', 'registration_number', 'make', 'model', 'status', 'primary_photo', 'vehicle_daily_rate']
+
+    def get_vehicle_daily_rate(self, obj):
+        try:
+            return obj.owner_rate.vehicle_daily_rate
+        except VehicleOwnerRate.DoesNotExist:
+            return None
 
 
 class CarOwnerSerializer(serializers.ModelSerializer):
@@ -21,7 +29,7 @@ class CarOwnerSerializer(serializers.ModelSerializer):
         model = CarOwner
         fields = [
             'id', 'name', 'phone', 'alternate_phone', 'email', 'address',
-            'upi_id', 'upi_payee_name', 'default_share_percent',
+            'upi_id', 'upi_payee_name',
             'id_proof_number', 'id_proof_photo', 'notes', 'is_active',
             'created_at', 'updated_at', 'vehicle_count', 'vehicles', 'outstanding_balance',
         ]
@@ -42,7 +50,7 @@ class CarOwnerListSerializer(serializers.ModelSerializer):
     class Meta:
         model = CarOwner
         fields = [
-            'id', 'name', 'phone', 'email', 'upi_id', 'default_share_percent',
+            'id', 'name', 'phone', 'email', 'upi_id',
             'is_active', 'vehicle_count', 'outstanding_balance',
         ]
 

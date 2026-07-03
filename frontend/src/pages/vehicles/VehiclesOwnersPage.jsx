@@ -15,6 +15,7 @@ import { formatCurrency, formatDateTime } from '../../utils/format';
 import VehicleCard from './VehicleCard';
 import VehicleFormModal from './VehicleFormModal';
 import VehicleDetailModal from './VehicleDetailModal';
+import VehicleOwnerRateModal from './VehicleOwnerRateModal';
 import OwnerFormModal from '../owners/OwnerFormModal';
 import OwnerDetailModal from '../owners/OwnerDetailModal';
 
@@ -41,6 +42,7 @@ export default function VehiclesOwnersPage() {
   const [vehicleFormOpen, setVehicleFormOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState(null);
   const [viewingVehicle, setViewingVehicle] = useState(null);
+  const [rateVehicle, setRateVehicle] = useState(null);
 
   // Owners state
   const [owners, setOwners] = useState([]);
@@ -171,7 +173,15 @@ export default function VehiclesOwnersPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {vehicles.map((v) => (
-                <VehicleCard key={v.id} vehicle={v} symbol={symbol} onClick={() => handleViewVehicle(v)} />
+                <div key={v.id} className="flex flex-col gap-1">
+                  <VehicleCard vehicle={v} symbol={symbol} onClick={() => handleViewVehicle(v)} />
+                  <button
+                    onClick={() => setRateVehicle(v)}
+                    className="w-full text-xs text-navy-400 hover:text-amber-600 border border-navy-100 rounded-lg py-1 bg-white hover:border-amber-200 transition-colors"
+                  >
+                    Rate Config
+                  </button>
+                </div>
               ))}
             </div>
           )}
@@ -224,6 +234,11 @@ export default function VehiclesOwnersPage() {
       <VehicleDetailModal
         open={!!viewingVehicle} onClose={() => setViewingVehicle(null)} vehicle={viewingVehicle}
         onEdit={(v) => { setViewingVehicle(null); setEditingVehicle(v); setVehicleFormOpen(true); }}
+      />
+
+      <VehicleOwnerRateModal
+        open={!!rateVehicle} onClose={() => setRateVehicle(null)} vehicle={rateVehicle}
+        onSaved={loadVehicles}
       />
 
       <OwnerFormModal open={ownerFormOpen} onClose={() => setOwnerFormOpen(false)} owner={editingOwner} onSaved={loadOwners} />
