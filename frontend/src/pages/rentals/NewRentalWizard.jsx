@@ -41,10 +41,10 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const [errors, setErrors] = useState({});
 
   const [form, setForm] = useState({
-    customer_id: '', vehicle: '', number_of_vehicles: 1, destination: '', purpose: '',
+    customer_id: '', vehicle: '', destination: '', purpose: '',
     scheduled_start: defaultStart(), scheduled_end: defaultEnd(), booked_days: 1,
     odometer_start: '', payment_timing: 'later', security_deposit_collected: false,
-    security_deposit_amount: '',
+    security_deposit_amount: '', daily_rate: '',
   });
 
   useEffect(() => {
@@ -60,10 +60,10 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
 
   const estimatedTotal = useMemo(() => {
     if (!selectedVehicle) return 0;
-    const base = Number(selectedVehicle.vehicle_daily_rate) * Number(form.booked_days || 1);
+    const base = Number(form.daily_rate || 0) * Number(form.booked_days || 1);
     const gst = base * (Number(settings?.gst_percent || 0) / 100);
     return base + gst;
-  }, [selectedVehicle, form.booked_days, settings]);
+  }, [selectedVehicle, form.daily_rate, form.booked_days, settings]);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -201,16 +201,15 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
               options={vehicleOptions}
               value={form.vehicle}
               error={errors.vehicle}
-              onChange={(v) => update('vehicle', v)}
+              onChange={(v) => {
+                const veh = vehicles.find((x) => String(x.id) === String(v));
+                setForm((f) => ({ ...f, vehicle: v, daily_rate: veh ? String(veh.vehicle_daily_rate) : '' }));
+              }}
               placeholder="Search registration, make or model..."
               emptyMessage="No available vehicles match your search"
             />
-            <div className="grid grid-cols-2 gap-4">
-              <Input label="Number of Vehicles" type="number" min="1" value={form.number_of_vehicles}
-                onChange={(e) => update('number_of_vehicles', e.target.value)} />
-              <Input label="Odometer at Pickup (km)" type="number" required value={form.odometer_start}
-                error={errors.odometer_start} onChange={(e) => update('odometer_start', e.target.value)} />
-            </div>
+            <Input label="Odometer at Pickup (km)" type="number" required value={form.odometer_start}
+              error={errors.odometer_start} onChange={(e) => update('odometer_start', e.target.value)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Scheduled Start" type="datetime-local" required value={form.scheduled_start}
                 error={errors.scheduled_start} onChange={(e) => update('scheduled_start', e.target.value)} />
@@ -222,13 +221,26 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
               <Input label="Purpose of Trip" value={form.purpose} onChange={(e) => update('purpose', e.target.value)} placeholder="e.g. Family vacation" />
             </div>
             {selectedVehicle && (
-              <div className="bg-navy-50/60 border border-navy-100 rounded-lg px-4 py-3 flex items-center justify-between">
-                <span className="text-sm text-navy-600">
-                  {formatCurrency(selectedVehicle.vehicle_daily_rate, symbol)}/day × {form.booked_days} day(s)
-                </span>
-                <span className="text-base font-semibold text-navy-900 tabular-nums">
-                  ≈ {formatCurrency(estimatedTotal, symbol)} estimated
-                </span>
+              <div className="space-y-3">
+                <Input
+                  label="Rate per Day"
+                  type="number"
+                  value={form.daily_rate}
+                  onChange={(e) => update('daily_rate', e.target.value)}
+                  hint={
+                    Number(form.daily_rate) !== Number(selectedVehicle.vehicle_daily_rate)
+                      ? `Default: ${formatCurrency(selectedVehicle.vehicle_daily_rate, symbol)}/day — you've applied a discount`
+                      : `Edit to apply a discount for this booking`
+                  }
+                />
+                <div className="bg-navy-50/60 border border-navy-100 rounded-lg px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm text-navy-600">
+                    {formatCurrency(form.daily_rate || 0, symbol)}/day × {form.booked_days} day(s)
+                  </span>
+                  <span className="text-base font-semibold text-navy-900 tabular-nums">
+                    ≈ {formatCurrency(estimatedTotal, symbol)} estimated
+                  </span>
+                </div>
               </div>
             )}
           </div>

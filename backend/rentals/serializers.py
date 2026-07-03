@@ -91,13 +91,15 @@ class RentalCreateSerializer(serializers.ModelSerializer):
     customer_id = serializers.PrimaryKeyRelatedField(
         queryset=Customer.objects.all(), source='customer', required=False, allow_null=True,
     )
+    daily_rate = serializers.DecimalField(max_digits=10, decimal_places=2, required=False, write_only=True)
 
     class Meta:
         model = Rental
         fields = [
-            'customer_id', 'vehicle', 'number_of_vehicles', 'destination', 'purpose',
+            'customer_id', 'vehicle', 'destination', 'purpose',
             'scheduled_start', 'scheduled_end', 'booked_days', 'odometer_start',
             'payment_timing', 'security_deposit_collected', 'security_deposit_amount',
+            'daily_rate',
         ]
 
     def create(self, validated_data):
@@ -106,6 +108,7 @@ class RentalCreateSerializer(serializers.ModelSerializer):
         settings_obj = ApplicationSettings.load()
         vehicle = validated_data['vehicle']
         booked_days = validated_data.get('booked_days', 1)
+        daily_rate_override = validated_data.pop('daily_rate', None)
 
         try:
             rate_config = VehicleOwnerRate.objects.get(vehicle=vehicle)
@@ -115,10 +118,11 @@ class RentalCreateSerializer(serializers.ModelSerializer):
                 {'vehicle': 'No owner rate configured for this vehicle. Please set it up in Vehicles → Rate Config first.'}
             )
 
-        base_amount = rate_config.vehicle_daily_rate * booked_days
+        effective_daily_rate = daily_rate_override if daily_rate_override is not None else rate_config.vehicle_daily_rate
+        base_amount = effective_daily_rate * booked_days
         rental = Rental.objects.create(
             **validated_data,
-            daily_rate_snapshot=rate_config.vehicle_daily_rate,
+            daily_rate_snapshot=effective_daily_rate,
             gst_percent_snapshot=settings_obj.gst_percent,
             extra_km_charge_snapshot=settings_obj.extra_km_charge_per_km,
             free_km_total_snapshot=settings_obj.free_km_per_day * booked_days,
