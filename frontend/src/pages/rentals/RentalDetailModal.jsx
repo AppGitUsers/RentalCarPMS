@@ -20,7 +20,7 @@ const PAYMENT_METHODS = [
   { value: 'card', label: 'Card' }, { value: 'bank_transfer', label: 'Bank Transfer' },
 ];
 
-export default function RentalDetailModal({ open, onClose, rentalId, onChanged }) {
+export default function RentalDetailModal({ open, onClose, rentalId, initialMode, onChanged }) {
   const { showToast } = useToast();
   const { settings } = useSettings();
   const symbol = settings?.currency_symbol || '₹';
@@ -45,11 +45,17 @@ export default function RentalDetailModal({ open, onClose, rentalId, onChanged }
   useEffect(() => {
     if (open && rentalId) {
       load();
-      setMode('view');
+      setMode(initialMode || 'view');
     } else {
       setRental(null);
     }
   }, [open, rentalId]);
+
+  useEffect(() => {
+    if (rental && mode === 'pay' && !paymentAmount) {
+      setPaymentAmount(String(rental.balance_due));
+    }
+  }, [rental, mode]);
 
   if (!open) return null;
 

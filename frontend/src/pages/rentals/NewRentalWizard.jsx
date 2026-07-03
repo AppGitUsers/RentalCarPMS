@@ -117,7 +117,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
       };
       const rental = await rentalsApi.createRental(payload);
       showToast(`Booking ${rental.invoice_number} created successfully`);
-      onCreated(rental);
+      onCreated(rental, form.payment_timing);
       onClose();
     } catch (err) {
       showToast(err.response?.data?.detail || 'Could not create the booking', 'error');

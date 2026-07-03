@@ -45,6 +45,7 @@ export default function RentalsPage() {
   const [endTo, setEndTo] = useState('');
   const [wizardOpen, setWizardOpen] = useState(false);
   const [detailRentalId, setDetailRentalId] = useState(null);
+  const [detailInitialMode, setDetailInitialMode] = useState(null);
 
   const hasDateFilters = startFrom || startTo || endFrom || endTo;
 
@@ -201,12 +202,17 @@ export default function RentalsPage() {
       <NewRentalWizard
         open={wizardOpen}
         onClose={() => setWizardOpen(false)}
-        onCreated={(rental) => { load(); setDetailRentalId(rental.id); }}
+        onCreated={(rental, paymentTiming) => {
+          load();
+          setDetailInitialMode(paymentTiming === 'now' ? 'pay' : null);
+          setDetailRentalId(rental.id);
+        }}
       />
       <RentalDetailModal
         open={!!detailRentalId}
-        onClose={() => setDetailRentalId(null)}
+        onClose={() => { setDetailRentalId(null); setDetailInitialMode(null); }}
         rentalId={detailRentalId}
+        initialMode={detailInitialMode}
         onChanged={load}
       />
     </div>
