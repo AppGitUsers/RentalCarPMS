@@ -10,7 +10,6 @@ import RentalsPage from './pages/rentals/RentalsPage';
 import VehiclesOwnersPage from './pages/vehicles/VehiclesOwnersPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import StaffPage from './pages/staff/StaffPage';
-import KioskPage from './pages/staff/KioskPage';
 import FinancePage from './pages/finance/FinancePage';
 import SettingsPage from './pages/settings/SettingsPage';
 import SessionExpiredModal from './components/common/SessionExpiredModal';
@@ -30,7 +29,6 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/kiosk" element={<KioskPage />} />
       <Route
         path="/"
         element={

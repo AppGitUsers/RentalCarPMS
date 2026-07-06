@@ -6,7 +6,7 @@ from django.db.models import Sum
 def get_finance_summary(month: int, year: int):
     from finance.models import FinanceEntry
     from rentals.models import OwnerPayout, Rental
-    from staff.models import SalaryPayment
+    from staff.models import StaffPayment
 
     # 1 query — all three rental aggregates in one shot
     rental_aggs = Rental.objects.filter(
@@ -41,9 +41,9 @@ def get_finance_summary(month: int, year: int):
         paid_at__year=year, paid_at__month=month,
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-    total_salary_paid = SalaryPayment.objects.filter(
-        paid_at__year=year, paid_at__month=month, is_paid=True,
-    ).aggregate(total=Sum('final_amount'))['total'] or Decimal('0.00')
+    total_salary_paid = StaffPayment.objects.filter(
+        paid_at__year=year, paid_at__month=month,
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
     # 1 query — yearly rental + custom income combined
     yearly_aggs = FinanceEntry.objects.filter(
@@ -85,7 +85,7 @@ def get_monthly_trend(year: int):
     from django.db.models.functions import ExtractMonth
     from finance.models import FinanceEntry
     from rentals.models import OwnerPayout, Rental
-    from staff.models import SalaryPayment
+    from staff.models import StaffPayment
 
     zero = Decimal('0.00')
 
@@ -127,10 +127,10 @@ def get_monthly_trend(year: int):
 
     # 1 query: salary paid per month (by paid_at)
     salary_by_month = month_dict(
-        SalaryPayment.objects.filter(paid_at__year=year, is_paid=True)
+        StaffPayment.objects.filter(paid_at__year=year)
         .annotate(m=ExtractMonth('paid_at'))
         .values('m')
-        .annotate(total=Sum('final_amount')),
+        .annotate(total=Sum('amount')),
         'total',
     )
 
