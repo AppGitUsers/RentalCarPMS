@@ -139,16 +139,16 @@ class Rental(models.Model):
         self.actual_end = actual_end or timezone.now()
         self.odometer_end = odometer_end
 
-        # Late fee: half-day if returned within 6 hrs after scheduled_end (net of grace),
-        # full day if beyond 6 hrs. Grace period is a free window inside the 6-hr band.
-        late_delta = self.actual_end - self.scheduled_end
-        grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot))
-        if late_delta <= grace:
+        # Late fee: repeating per 24-hour cycle beyond the grace window.
+        # Each full day adds daily_rate; a remainder of ≤6h adds half_day; >6h rounds to full day.
+        full_days, has_half_day = self._late_fee_breakdown()
+        daily_rate = Decimal(str(self.daily_rate_snapshot))
+        if full_days == 0 and not has_half_day:
             self.late_fee_amount = Decimal("0.00")
-        elif late_delta <= timezone.timedelta(hours=6):
-            self.late_fee_amount = q2(Decimal(str(self.daily_rate_snapshot)) / 2)
         else:
-            self.late_fee_amount = q2(Decimal(str(self.daily_rate_snapshot)))
+            self.late_fee_amount = q2(
+                daily_rate * full_days + (daily_rate / 2 if has_half_day else Decimal("0"))
+            )
 
         # Extra km
         km_covered = max((self.odometer_end or 0) - (self.odometer_start or 0), 0)
@@ -185,16 +185,46 @@ class Rental(models.Model):
             return None
         return max(self.odometer_end - self.odometer_start, 0)
 
-    @property
-    def late_fee_type(self):
-        """none / half_day / full_day — based on how late the vehicle was returned."""
-        if not self.actual_end or not self.scheduled_end or not self.late_fee_amount:
-            return None
+    def _late_fee_breakdown(self):
+        """
+        Returns (full_days: int, has_half_day: bool).
+        full_days=0, has_half_day=False means no late fee.
+        full_days=N, has_half_day=False means N full-day charges.
+        full_days=N, has_half_day=True means N full-day charges + one half-day charge.
+        Rule per 24-hour cycle:
+          net_late ≤ 0              → no fee
+          0 < remainder ≤ 6 hours  → half-day for that remainder
+          remainder > 6 hours      → round up to a full day
+        """
+        if not self.actual_end or not self.scheduled_end:
+            return (0, False)
         late_delta = self.actual_end - self.scheduled_end
         grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot or 0))
-        if late_delta <= grace:
+        net_late = late_delta - grace
+        if net_late <= timezone.timedelta(0):
+            return (0, False)
+        net_hours = Decimal(str(net_late.total_seconds())) / Decimal("3600")
+        full_days = int(net_hours // 24)
+        remainder = net_hours % Decimal("24")
+        if remainder <= Decimal("0"):
+            return (full_days, False)
+        elif remainder <= Decimal("6"):
+            return (full_days, True)
+        else:
+            return (full_days + 1, False)
+
+    @property
+    def late_fee_type(self):
+        """Human-readable late fee label, e.g. 'Half Day', '1 Day', '2 Days + Half Day'. None if no late fee."""
+        if not self.actual_end or not self.scheduled_end or not self.late_fee_amount:
             return None
-        return 'half_day' if late_delta <= timezone.timedelta(hours=6) else 'full_day'
+        full_days, has_half_day = self._late_fee_breakdown()
+        if full_days == 0 and not has_half_day:
+            return None
+        if full_days == 0:
+            return 'Half Day'
+        day_label = f'{full_days} Day{"s" if full_days > 1 else ""}'
+        return f'{day_label} + Half Day' if has_half_day else day_label
 
     @property
     def computed_owner_payout(self):
@@ -205,14 +235,11 @@ class Rental(models.Model):
         base_share = q2(owner_daily * self.booked_days)
 
         late_share = Decimal('0.00')
-        if self.actual_end and self.scheduled_end and self.late_fee_amount:
-            late_delta = self.actual_end - self.scheduled_end
-            grace = timezone.timedelta(minutes=int(self.grace_period_minutes_snapshot or 0))
-            if late_delta > grace:
-                if late_delta <= timezone.timedelta(hours=6):
-                    late_share = q2(owner_daily / 2)
-                else:
-                    late_share = q2(owner_daily)
+        if self.late_fee_amount:
+            full_days, has_half_day = self._late_fee_breakdown()
+            late_share = q2(
+                owner_daily * full_days + (owner_daily / 2 if has_half_day else Decimal("0"))
+            )
 
         extra_km_share = q2(
             Decimal(str(self.extra_km_amount)) * Decimal(str(self.owner_extra_km_percent_snapshot)) / 100

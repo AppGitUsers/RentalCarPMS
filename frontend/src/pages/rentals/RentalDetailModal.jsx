@@ -240,7 +240,7 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
         <ChargeRow label="Base Amount" value={formatCurrency(rental.base_amount, symbol)} />
         {Number(rental.late_fee_amount) > 0 && (
           <ChargeRow
-            label={`Late Fee — ${rental.late_fee_type === 'half_day' ? 'Half Day' : rental.late_fee_type === 'full_day' ? 'Full Day' : 'Late Return'}`}
+            label={`Late Fee — ${rental.late_fee_type || 'Late Return'}`}
             value={formatCurrency(rental.late_fee_amount, symbol)}
             highlight="danger"
           />
