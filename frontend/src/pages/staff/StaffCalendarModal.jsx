@@ -278,8 +278,8 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
                   setPayAmount(String(Math.max(0, Number(summary.balance))));
                   setShowPayModal(true);
                 }}
-                disabled={!isPastMonth}
-                title={!isPastMonth ? 'Can only pay for past months' : undefined}
+                disabled={!isPastMonth || Number(summary?.balance) <= 0}
+                title={!isPastMonth ? 'Can only pay for past months' : Number(summary?.balance) <= 0 ? 'Nothing due' : undefined}
                 className="flex items-center gap-1 px-3 py-1.5 bg-navy-700 text-white text-xs rounded-lg hover:bg-navy-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <IndianRupee className="w-3 h-3" /> Pay
