@@ -36,6 +36,8 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
 
   const [step, setStep] = useState(0);
   const [customers, setCustomers] = useState([]);
+  const [customerSearching, setCustomerSearching] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [vehicles, setVehicles] = useState([]);
   const [staffList, setStaffList] = useState([]);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
@@ -53,13 +55,25 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
 
   useEffect(() => {
     if (open) {
-      customersApi.listCustomers({ page_size: 500 }).then((d) => setCustomers(d.results || d));
+      setCustomers([]);
+      setSelectedCustomer(null);
       vehiclesApi.listVehicles({ status: 'available', page_size: 500 }).then((d) => setVehicles(d.results || d));
       staffApi.listStaff({ is_active: true }).then((d) => setStaffList(d.results || d)).catch(() => {});
       setStep(0);
       setErrors({});
     }
   }, [open]);
+
+  const handleCustomerSearch = async (query) => {
+    if (query.length < 2) { setCustomers([]); return; }
+    setCustomerSearching(true);
+    try {
+      const data = await customersApi.listCustomers({ search: query, page_size: 20 });
+      setCustomers(data.results || data);
+    } finally {
+      setCustomerSearching(false);
+    }
+  };
 
   const selectedVehicle = vehicles.find((v) => String(v.id) === String(form.vehicle));
 
@@ -84,7 +98,10 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     }
   }, [form.scheduled_start, form.scheduled_end]);
 
-  const customerOptions = customers.map((c) => ({ value: c.id, label: c.full_name, sublabel: c.phone }));
+  const customerOptions = [
+    ...(selectedCustomer ? [{ value: selectedCustomer.id, label: selectedCustomer.full_name, sublabel: selectedCustomer.phone }] : []),
+    ...customers.filter((c) => String(c.id) !== String(selectedCustomer?.id)).map((c) => ({ value: c.id, label: c.full_name, sublabel: c.phone })),
+  ];
   const vehicleOptions = vehicles.map((v) => ({
     value: v.id,
     label: `${v.registration_number} — ${v.make} ${v.model}`,
@@ -138,11 +155,12 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   };
 
   const handleCustomerCreated = async () => {
-    const data = await customersApi.listCustomers({ page_size: 500 });
+    const data = await customersApi.listCustomers({ page_size: 5 });
     const list = data.results || data;
-    setCustomers(list);
     if (list.length) {
       const newest = [...list].sort((a, b) => b.id - a.id)[0];
+      setSelectedCustomer(newest);
+      setCustomers([newest]);
       update('customer_id', newest.id);
     }
   };
@@ -194,13 +212,19 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
                 options={customerOptions}
                 value={form.customer_id}
                 error={errors.customer_id}
-                onChange={(v) => update('customer_id', v)}
+                onChange={(v) => {
+                  update('customer_id', v);
+                  const found = customers.find((c) => String(c.id) === String(v));
+                  if (found) setSelectedCustomer(found);
+                }}
                 placeholder="Search by name or phone..."
+                onSearch={handleCustomerSearch}
+                searching={customerSearching}
               />
               <Button variant="secondary" icon={UserPlus} onClick={() => setCustomerFormOpen(true)}>New</Button>
             </div>
             <p className="text-xs text-navy-400">
-              Can't find the customer? Click "New" to add their legal details, ID proof and photo before continuing.
+              Type at least 2 characters to search by name or phone. Can't find them? Click "New" to add the customer first.
             </p>
           </div>
         )}

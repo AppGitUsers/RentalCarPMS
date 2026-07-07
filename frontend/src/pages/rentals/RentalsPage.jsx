@@ -34,6 +34,8 @@ export default function RentalsPage() {
 
   const [activeRentals, setActiveRentals] = useState([]);
   const [rentals, setRentals] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [upcomingCount, setUpcomingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
@@ -53,6 +55,9 @@ export default function RentalsPage() {
 
   useEffect(() => {
     rentalsApi.getActiveRentals().then(setActiveRentals);
+    const today = new Date().toISOString().split('T')[0];
+    rentalsApi.listRentals({ status: 'booked', scheduled_start_after: today, page_size: 1 })
+      .then((d) => setUpcomingCount(d.count || 0));
   }, []);
 
   const load = useCallback(() => {
@@ -65,8 +70,9 @@ export default function RentalsPage() {
       scheduled_start_before: startTo   || undefined,
       scheduled_end_after:    endFrom   || undefined,
       scheduled_end_before:   endTo     || undefined,
-    }).then((list) => {
-      setRentals(list.results || list);
+    }).then((data) => {
+      setRentals(data.results || data);
+      setTotalCount(data.count ?? (data.results || data).length);
     }).finally(() => setLoading(false));
   }, [debouncedSearch, statusFilter, paymentFilter, startFrom, startTo, endFrom, endTo]);
 
@@ -83,9 +89,14 @@ export default function RentalsPage() {
       <div className="p-8 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard icon={CarFront} tone="amber" label="Cars Currently Out" value={activeRentals.length} />
-          <StatCard icon={Clock3} tone="navy" label="Upcoming Bookings" value={rentals.filter((r) => r.status === 'booked').length} />
-          <StatCard icon={CalendarRange} tone="success" label="Total Bookings Shown" value={rentals.length} />
+          <StatCard icon={Clock3} tone="navy" label="Upcoming Bookings" value={upcomingCount} />
+          <StatCard icon={CalendarRange} tone="success" label="Total Bookings" value={totalCount} />
         </div>
+        {!hasDateFilters && (
+          <p className="text-xs text-navy-400 -mt-3">
+            Booking list shows the last 30 days. Use date filters above to search beyond this range.
+          </p>
+        )}
 
         {activeRentals.length > 0 && (
           <Card>

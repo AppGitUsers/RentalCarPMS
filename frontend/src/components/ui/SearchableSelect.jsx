@@ -20,6 +20,8 @@ export default function SearchableSelect({
   emptyMessage = 'No results found',
   renderOption,
   className,
+  onSearch,
+  searching = false,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -39,11 +41,20 @@ export default function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filtered = query
-    ? options.filter((o) =>
-        `${o.label} ${o.sublabel || ''}`.toLowerCase().includes(query.toLowerCase())
-      )
-    : options;
+  // Debounced server-side search
+  useEffect(() => {
+    if (!onSearch) return;
+    const timer = setTimeout(() => { onSearch(query); }, 350);
+    return () => clearTimeout(timer);
+  }, [query, onSearch]);
+
+  const filtered = onSearch
+    ? options
+    : query
+      ? options.filter((o) =>
+          `${o.label} ${o.sublabel || ''}`.toLowerCase().includes(query.toLowerCase())
+        )
+      : options;
 
   const handleSelect = (opt) => {
     onChange(opt.value);
@@ -102,7 +113,11 @@ export default function SearchableSelect({
             />
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
+            {searching ? (
+              <div className="px-3.5 py-3 text-sm text-navy-400 text-center">Searching...</div>
+            ) : onSearch && query.length < 2 ? (
+              <div className="px-3.5 py-3 text-sm text-navy-400 text-center">Type to search...</div>
+            ) : filtered.length === 0 ? (
               <div className="px-3.5 py-3 text-sm text-navy-400 text-center">{emptyMessage}</div>
             ) : (
               filtered.map((opt) => (
