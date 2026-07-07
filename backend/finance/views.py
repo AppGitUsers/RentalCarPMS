@@ -47,7 +47,7 @@ class FinanceExcelExportView(APIView):
 
     def get(self, request):
         from rentals.models import OwnerPayout, Rental
-        from staff.models import SalaryPayment
+        from staff.models import StaffPayment
 
         month = int(request.query_params.get('month'))
         year = int(request.query_params.get('year'))
@@ -62,8 +62,8 @@ class FinanceExcelExportView(APIView):
         owner_payouts = OwnerPayout.objects.select_related('owner').filter(
             paid_at__year=year, paid_at__month=month,
         )
-        salary_payments = SalaryPayment.objects.select_related('staff').filter(
-            paid_at__year=year, paid_at__month=month, is_paid=True,
+        salary_payments = StaffPayment.objects.select_related('staff').filter(
+            paid_at__year=year, paid_at__month=month,
         )
 
         excel_bytes = build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month, year)
@@ -78,7 +78,7 @@ class FinanceDateRangeExcelExportView(APIView):
     def get(self, request):
         from django.utils.dateparse import parse_date
         from rentals.models import OwnerPayout, Rental
-        from staff.models import SalaryPayment
+        from staff.models import StaffPayment
 
         date_from = parse_date(request.query_params.get('date_from', ''))
         date_to   = parse_date(request.query_params.get('date_to', ''))
@@ -95,8 +95,8 @@ class FinanceDateRangeExcelExportView(APIView):
         owner_payouts = OwnerPayout.objects.select_related('owner').filter(
             paid_at__date__gte=date_from, paid_at__date__lte=date_to,
         )
-        salary_payments = SalaryPayment.objects.select_related('staff').filter(
-            paid_at__date__gte=date_from, paid_at__date__lte=date_to, is_paid=True,
+        salary_payments = StaffPayment.objects.select_related('staff').filter(
+            paid_at__date__gte=date_from, paid_at__date__lte=date_to,
         )
 
         label = f"{date_from.strftime('%d%b%Y')}_to_{date_to.strftime('%d%b%Y')}"

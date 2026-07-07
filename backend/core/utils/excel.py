@@ -62,7 +62,7 @@ def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payme
         ws2.append(["Owner Payout", p.owner.name, p.get_payout_type_display(), float(p.amount), p.paid_at.strftime("%d-%m-%Y"), p.notes])
 
     for s in salary_payments:
-        ws2.append(["Staff Salary", s.staff.full_name, f"Salary {s.month}/{s.year}", float(s.final_amount), (s.paid_at.strftime("%d-%m-%Y") if s.paid_at else ""), s.notes])
+        ws2.append(["Staff Salary", s.staff.full_name, f"Salary {s.month}/{s.year}", float(s.amount), s.paid_at.strftime("%d-%m-%Y"), s.notes])
 
     _autosize(ws2)
 
