@@ -48,7 +48,7 @@ export default function StaffPage() {
         }
       />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <StatCard icon={Users} tone="navy" label="Active Staff" value={activeStaff.length} />
           <StatCard icon={Users} tone="amber" label="Monthly Payroll (Base)" value={formatCurrency(totalMonthlyPayroll, symbol)} />

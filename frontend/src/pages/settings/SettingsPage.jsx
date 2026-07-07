@@ -54,11 +54,11 @@ export default function SettingsPage() {
         actions={<Button icon={Save} onClick={handleSave} loading={saving}>Save Changes</Button>}
       />
 
-      <div className="p-8 space-y-6 max-w-4xl">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-4xl">
         <Card>
           <CardHeader icon={Building2} title="Company Details" subtitle="Shown on invoices and rental agreements" />
           <div className="space-y-4">
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <PhotoUpload label="Company Logo" existingUrl={form.company_logo} onChange={setLogoFile} />
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input label="Company Name" value={form.company_name} onChange={(e) => update('company_name', e.target.value)} />

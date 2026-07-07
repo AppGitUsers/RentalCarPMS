@@ -24,6 +24,7 @@ export default function CustomersPage() {
     customersApi.listCustomers({ search: debouncedSearch || undefined })
       .then((data) => setCustomers(data.results || data))
       .finally(() => setLoading(false));
+
   }, [debouncedSearch]);
 
   useEffect(() => { load(); }, [load]);
@@ -40,7 +41,7 @@ export default function CustomersPage() {
         }
       />
 
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="mb-5 max-w-sm">
           <Input
             icon={Search}

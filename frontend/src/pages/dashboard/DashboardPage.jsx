@@ -34,7 +34,7 @@ export default function DashboardPage() {
     <div>
       <Topbar title="Dashboard" subtitle="Overview of your rental operations" />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         {/* Alerts */}
         {(data.overdue_rentals > 0 || data.expiring_documents.length > 0) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -86,7 +86,7 @@ export default function DashboardPage() {
               </button>
             }
           />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <FinanceMiniStat
               icon={TrendingUp} tone="success" label="Total Income"
               value={formatCurrency(fin.income.total_income, symbol)}

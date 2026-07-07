@@ -225,7 +225,7 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
         {summary && (
           <div className="px-5 py-3 border-b border-navy-100">
             {/* Main stats row */}
-            <div className="grid grid-cols-4 gap-2 mb-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2.5">
               {[
                 { label: 'Salary', val: summary.calculated_amount, cls: 'text-navy-900' },
                 { label: 'Delivery', val: summary.delivery_earnings, cls: 'text-amber-600' },

@@ -86,7 +86,7 @@ export default function RentalsPage() {
         actions={<Button icon={Plus} onClick={() => setWizardOpen(true)}>New Booking</Button>}
       />
 
-      <div className="p-8 space-y-6">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard icon={CarFront} tone="amber" label="Cars Currently Out" value={activeRentals.length} />
           <StatCard icon={Clock3} tone="navy" label="Upcoming Bookings" value={upcomingCount} />
@@ -152,32 +152,36 @@ export default function RentalsPage() {
           </div>
 
           {/* Date range filters */}
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex items-center gap-2">
-              <CalendarRange className="w-3.5 h-3.5 text-navy-400 flex-shrink-0" />
-              <span className="text-xs text-navy-400 font-medium">Pickup:</span>
+          <div className="flex flex-wrap gap-3 items-end">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <CalendarRange className="w-3.5 h-3.5 text-navy-400 flex-shrink-0" />
+                <span className="text-xs text-navy-400 font-medium">Pickup:</span>
+              </div>
               <input
                 type="date" value={startFrom} onChange={(e) => setStartFrom(e.target.value)}
-                className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white"
+                className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
               <span className="text-xs text-navy-400">to</span>
               <input
                 type="date" value={startTo} onChange={(e) => setStartTo(e.target.value)}
-                className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white"
+                className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
             </div>
 
-            <div className="flex items-center gap-2">
-              <CalendarRange className="w-3.5 h-3.5 text-navy-400 flex-shrink-0" />
-              <span className="text-xs text-navy-400 font-medium">Return:</span>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <CalendarRange className="w-3.5 h-3.5 text-navy-400 flex-shrink-0" />
+                <span className="text-xs text-navy-400 font-medium">Return:</span>
+              </div>
               <input
                 type="date" value={endFrom} onChange={(e) => setEndFrom(e.target.value)}
-                className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white"
+                className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
               <span className="text-xs text-navy-400">to</span>
               <input
                 type="date" value={endTo} onChange={(e) => setEndTo(e.target.value)}
-                className="text-xs border border-navy-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white"
+                className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
             </div>
 

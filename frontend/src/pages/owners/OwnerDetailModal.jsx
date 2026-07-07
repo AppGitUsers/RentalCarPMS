@@ -102,7 +102,7 @@ export default function OwnerDetailModal({ open, onClose, owner, onPayoutComplet
           )}
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SummaryMini label="Vehicles Owned" value={owner.vehicle_count ?? owner.vehicles?.length ?? 0} icon={Car} />
           <SummaryMini label="Outstanding Balance" value={formatCurrency(liveBalance ?? owner.outstanding_balance, symbol)} icon={Wallet} tone="amber" />
           <SummaryMini label="UPI ID" value={owner.upi_id || 'Not set'} icon={Phone} />

@@ -229,7 +229,7 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
         <Badge variant={rental.payment_status}>{rental.payment_status}</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <InfoMini icon={Calendar} label="Scheduled Start" value={formatDateTime(rental.scheduled_start)} />
         <InfoMini icon={Calendar} label="Scheduled End" value={formatDateTime(rental.scheduled_end)} />
         <InfoMini icon={MapPin} label="Destination" value={rental.destination || '-'} />
@@ -295,7 +295,7 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
       {(rental.customer_detail?.id_proof_photo_front || rental.customer_detail?.id_proof_photo_back || rental.customer_detail?.driving_license_photo) && (
         <div>
           <p className="text-xs font-semibold text-navy-500 uppercase tracking-wide mb-2">Customer ID Documents</p>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {rental.customer_detail.id_proof_photo_front && (
               <div>
                 <p className="text-xs text-navy-400 mb-1">ID Proof — Front</p>

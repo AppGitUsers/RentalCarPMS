@@ -26,11 +26,11 @@ export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
   return (
     <Modal open={open} onClose={onClose} title={`${vehicle.make} ${vehicle.model}`} subtitle={vehicle.registration_number} size="lg">
       <div className="space-y-6">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           {vehicle.primary_photo ? (
-            <img src={vehicle.primary_photo} alt="" className="w-32 h-24 rounded-xl object-cover flex-shrink-0" />
+            <img src={vehicle.primary_photo} alt="" className="w-full sm:w-32 h-40 sm:h-24 rounded-xl object-cover flex-shrink-0" />
           ) : (
-            <div className="w-32 h-24 rounded-xl bg-navy-100 flex items-center justify-center flex-shrink-0">
+            <div className="w-full sm:w-32 h-32 sm:h-24 rounded-xl bg-navy-100 flex items-center justify-center flex-shrink-0">
               <Gauge className="w-8 h-8 text-navy-300" />
             </div>
           )}
@@ -59,7 +59,7 @@ export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <PricingMini label="Daily Rate" value={formatCurrency(vehicle.daily_rate, symbol)} />
           <PricingMini label="Insurance Expiry" value={vehicle.insurance_expiry || 'Not set'} icon={Calendar} />
           <PricingMini label="Permit Expiry" value={vehicle.permit_expiry || 'Not set'} icon={Calendar} />

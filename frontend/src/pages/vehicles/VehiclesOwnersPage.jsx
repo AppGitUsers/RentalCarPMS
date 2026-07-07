@@ -100,7 +100,7 @@ export default function VehiclesOwnersPage() {
         }
       />
 
-      <div className="px-8 pt-6">
+      <div className="px-4 sm:px-8 pt-6">
         <div className="flex gap-1 border-b border-navy-100 mb-6">
           <button
             onClick={() => setSection('vehicles')}
@@ -122,7 +122,7 @@ export default function VehiclesOwnersPage() {
       </div>
 
       {section === 'vehicles' && (
-        <div className="px-8 pb-8 space-y-6">
+        <div className="px-4 sm:px-8 pb-8 space-y-6">
           {statusSummary && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard icon={Car} tone="navy" label="Total Fleet" value={statusSummary.total} />
@@ -171,7 +171,7 @@ export default function VehiclesOwnersPage() {
           ) : vehicles.length === 0 ? (
             <EmptyState icon={Car} title="No vehicles found" description="Add a vehicle to get started, or adjust your filters." />
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {vehicles.map((v) => (
                 <div key={v.id} className="flex flex-col gap-1">
                   <VehicleCard vehicle={v} symbol={symbol} onClick={() => handleViewVehicle(v)} />
@@ -189,7 +189,7 @@ export default function VehiclesOwnersPage() {
       )}
 
       {section === 'owners' && (
-        <div className="px-8 pb-8 space-y-6">
+        <div className="px-4 sm:px-8 pb-8 space-y-6">
           <div className="w-full sm:w-80">
             <Input icon={Search} placeholder="Search owner name, phone, UPI ID..." value={ownerSearch} onChange={(e) => setOwnerSearch(e.target.value)} />
           </div>

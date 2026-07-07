@@ -196,7 +196,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
                 >
                   {idx < step ? <Check className="w-4 h-4" /> : idx + 1}
                 </div>
-                <span className={cn('text-sm font-medium', idx === step ? 'text-navy-900' : 'text-navy-400')}>{s.label}</span>
+                <span className={cn('hidden sm:inline text-sm font-medium', idx === step ? 'text-navy-900' : 'text-navy-400')}>{s.label}</span>
               </div>
               {idx < STEPS.length - 1 && <div className={cn('flex-1 h-px mx-3', idx < step ? 'bg-success-300' : 'bg-navy-100')} />}
             </div>

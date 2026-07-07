@@ -3,6 +3,7 @@ import {
   LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, CarFront, Fingerprint,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useSidebar } from '../../context/SidebarContext';
 import { cn } from '../../utils/cn';
 
 const NAV_ITEMS = [
@@ -17,9 +18,17 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
+  const { open, close } = useSidebar();
 
   return (
-    <aside className="w-64 flex-shrink-0 bg-navy-900 text-white flex flex-col h-screen sticky top-0">
+    <aside
+      className={cn(
+        'fixed inset-y-0 left-0 z-40 w-64 flex-shrink-0 bg-navy-900 text-white flex flex-col',
+        'transition-transform duration-300 ease-in-out',
+        'md:sticky md:top-0 md:h-screen md:translate-x-0',
+        open ? 'translate-x-0' : '-translate-x-full',
+      )}
+    >
       <div className="flex items-center gap-2.5 px-6 py-6">
         <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center flex-shrink-0">
           <CarFront className="w-5 h-5 text-white" />
@@ -36,6 +45,7 @@ export default function Sidebar() {
             key={to}
             to={to}
             end={to === '/'}
+            onClick={close}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors',
