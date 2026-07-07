@@ -43,6 +43,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
     km_covered = serializers.SerializerMethodField()
     late_fee_type = serializers.CharField(read_only=True)
     computed_owner_payout = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    assigned_staff_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Rental
@@ -59,6 +60,8 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'damage_notes', 'gst_amount', 'total_amount', 'amount_paid', 'payment_status',
             'status', 'closing_notes', 'created_at', 'updated_at', 'closed_at',
             'payments', 'balance_due', 'live_estimate', 'km_covered', 'computed_owner_payout',
+            'assigned_staff', 'assigned_staff_name', 'pickup_venue',
+            'pickup_venue_other_location', 'pickup_venue_other_link', 'driver_delivery_charge',
         ]
         read_only_fields = [
             'id', 'invoice_number', 'daily_rate_snapshot', 'gst_percent_snapshot',
@@ -67,6 +70,9 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'base_amount', 'late_fee_amount', 'extra_km_amount', 'gst_amount', 'total_amount',
             'created_at', 'updated_at', 'closed_at', 'payments',
         ]
+
+    def get_assigned_staff_name(self, obj):
+        return obj.assigned_staff.full_name if obj.assigned_staff else None
 
     def get_balance_due(self, obj):
         return obj.balance_due
@@ -100,6 +106,8 @@ class RentalCreateSerializer(serializers.ModelSerializer):
             'scheduled_start', 'scheduled_end', 'booked_days', 'odometer_start',
             'payment_timing', 'security_deposit_collected', 'security_deposit_amount',
             'daily_rate',
+            'assigned_staff', 'pickup_venue', 'pickup_venue_other_location',
+            'pickup_venue_other_link', 'driver_delivery_charge',
         ]
 
     def create(self, validated_data):
@@ -133,9 +141,12 @@ class RentalCreateSerializer(serializers.ModelSerializer):
             base_amount=base_amount,
             total_amount=base_amount,
         )
+        from decimal import Decimal
         gst_amt = rental.base_amount * rental.gst_percent_snapshot / 100
         rental.gst_amount = round(gst_amt, 2)
-        rental.total_amount = round(rental.base_amount + rental.gst_amount, 2)
+        rental.total_amount = round(
+            float(rental.base_amount) + float(rental.gst_amount) + float(rental.driver_delivery_charge), 2
+        )
         rental.save()
         return rental
 

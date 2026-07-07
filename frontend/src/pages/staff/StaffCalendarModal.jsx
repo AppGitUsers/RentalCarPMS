@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { X, ChevronLeft, ChevronRight, Loader2, IndianRupee } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Loader2, IndianRupee, ChevronDown } from 'lucide-react';
 import * as staffApi from '../../api/staff';
 import { useToast } from '../../components/ui/Toast';
 
@@ -26,6 +26,7 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
   const [loadingData, setLoadingData] = useState(false);
   const [togglingDay, setTogglingDay] = useState(null);
 
+  const [showDeliveryBreakdown, setShowDeliveryBreakdown] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [payAmount, setPayAmount] = useState('');
   const [payNotes, setPayNotes] = useState('');
@@ -223,9 +224,11 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
         {/* Salary summary */}
         {summary && (
           <div className="px-5 py-3 border-b border-navy-100">
-            <div className="grid grid-cols-3 gap-3 mb-2.5">
+            {/* Main stats row */}
+            <div className="grid grid-cols-4 gap-2 mb-2.5">
               {[
-                { label: 'Calculated', val: summary.calculated_amount, cls: 'text-navy-900' },
+                { label: 'Salary', val: summary.calculated_amount, cls: 'text-navy-900' },
+                { label: 'Delivery', val: summary.delivery_earnings, cls: 'text-amber-600' },
                 { label: 'Paid', val: summary.paid_this_month, cls: 'text-green-600' },
                 {
                   label: 'Balance',
@@ -235,10 +238,35 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
               ].map(({ label, val, cls }) => (
                 <div key={label} className="text-center">
                   <p className="text-[10px] text-navy-400 uppercase tracking-wide">{label}</p>
-                  <p className={`text-base font-bold tabular-nums ${cls}`}>₹{fmt(val)}</p>
+                  <p className={`text-sm font-bold tabular-nums ${cls}`}>₹{fmt(val)}</p>
                 </div>
               ))}
             </div>
+
+            {/* Delivery breakdown toggle */}
+            {Number(summary.delivery_earnings) > 0 && (
+              <div className="mb-2">
+                <button
+                  onClick={() => setShowDeliveryBreakdown((v) => !v)}
+                  className="flex items-center gap-1 text-xs text-amber-600 hover:text-amber-700"
+                >
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showDeliveryBreakdown ? 'rotate-180' : ''}`} />
+                  {summary.delivery_breakdown.length} delivery trip{summary.delivery_breakdown.length !== 1 ? 's' : ''} · ₹{fmt(summary.delivery_earnings)}
+                </button>
+                {showDeliveryBreakdown && (
+                  <div className="mt-1.5 space-y-1 bg-amber-50/60 rounded-lg p-2">
+                    {summary.delivery_breakdown.map((d) => (
+                      <div key={d.rental_id} className="flex items-center justify-between text-xs">
+                        <span className="text-navy-500">{d.date} · {d.customer}</span>
+                        <span className="text-navy-600 truncate max-w-[80px] mx-2">{d.location}</span>
+                        <span className="font-semibold text-amber-700 tabular-nums">₹{fmt(d.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between">
               <div className="flex gap-3 text-xs">
                 <span className="text-navy-500">Present: <strong>{summary.present_days}</strong></span>
@@ -331,9 +359,21 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="font-semibold text-navy-900 mb-1">Record Payment</h3>
-            <p className="text-xs text-navy-500 mb-4">
+            <p className="text-xs text-navy-500 mb-1">
               {staff.full_name} · {MONTH_NAMES[viewMonth - 1]} {viewYear}
             </p>
+            {summary && (
+              <div className="text-xs text-navy-400 mb-4 space-y-0.5">
+                <div className="flex justify-between"><span>Salary</span><span className="tabular-nums">₹{fmt(summary.calculated_amount)}</span></div>
+                {Number(summary.delivery_earnings) > 0 && (
+                  <div className="flex justify-between text-amber-600"><span>Delivery ({summary.delivery_breakdown.length} trip{summary.delivery_breakdown.length !== 1 ? 's' : ''})</span><span className="tabular-nums">₹{fmt(summary.delivery_earnings)}</span></div>
+                )}
+                <div className="flex justify-between font-medium text-navy-600 border-t border-navy-100 pt-0.5"><span>Total Payable</span><span className="tabular-nums">₹{fmt(summary.total_payable)}</span></div>
+                {Number(summary.paid_this_month) > 0 && (
+                  <div className="flex justify-between text-green-600"><span>Already Paid</span><span className="tabular-nums">₹{fmt(summary.paid_this_month)}</span></div>
+                )}
+              </div>
+            )}
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-navy-700 mb-1.5">Amount (₹)</label>

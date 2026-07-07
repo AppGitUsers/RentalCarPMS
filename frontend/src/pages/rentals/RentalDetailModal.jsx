@@ -234,6 +234,16 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
         <InfoMini icon={Calendar} label="Scheduled End" value={formatDateTime(rental.scheduled_end)} />
         <InfoMini icon={MapPin} label="Destination" value={rental.destination || '-'} />
         <InfoMini icon={Gauge} label="Odometer Start" value={rental.odometer_start ?? '-'} />
+        {rental.assigned_staff_name && (
+          <InfoMini icon={MapPin} label="Assigned Driver" value={rental.assigned_staff_name} />
+        )}
+        {rental.pickup_venue && (
+          <InfoMini icon={MapPin} label="Pickup Venue" value={
+            rental.pickup_venue === 'parking' ? 'Parking' :
+            rental.pickup_venue === 'airport' ? 'Airport' :
+            rental.pickup_venue_other_location || 'Other Location'
+          } />
+        )}
       </div>
 
       <div className="bg-navy-50/60 border border-navy-100 rounded-xl p-4 space-y-2">
@@ -247,6 +257,12 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
         )}
         {Number(rental.extra_km_amount) > 0 && <ChargeRow label="Extra KM Charge" value={formatCurrency(rental.extra_km_amount, symbol)} highlight="danger" />}
         {Number(rental.damage_charge_amount) > 0 && <ChargeRow label="Damage Charge" value={formatCurrency(rental.damage_charge_amount, symbol)} highlight="danger" />}
+        {Number(rental.driver_delivery_charge) > 0 && (
+          <ChargeRow
+            label={rental.assigned_staff_name ? `Driver Delivery — ${rental.assigned_staff_name}` : 'Driver Delivery Charge'}
+            value={formatCurrency(rental.driver_delivery_charge, symbol)}
+          />
+        )}
         <ChargeRow label={`GST (${rental.gst_percent_snapshot}%)`} value={formatCurrency(rental.gst_amount, symbol)} />
         <div className="border-t border-navy-200 pt-2 mt-1">
           <ChargeRow label="Total Amount" value={formatCurrency(rental.total_amount, symbol)} bold />

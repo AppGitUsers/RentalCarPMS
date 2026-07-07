@@ -153,7 +153,7 @@ class RentalViewSet(viewsets.ModelViewSet):
         additional_base = extension_rate * extension_days
         new_base = rental.base_amount + additional_base
         new_gst = (new_base * rental.gst_percent_snapshot / 100).quantize(Decimal('0.01'))
-        new_total = (new_base + new_gst).quantize(Decimal('0.01'))
+        new_total = (new_base + new_gst + rental.driver_delivery_charge).quantize(Decimal('0.01'))
 
         with transaction.atomic():
             rental.scheduled_end = rental.scheduled_end + timezone.timedelta(days=extension_days)

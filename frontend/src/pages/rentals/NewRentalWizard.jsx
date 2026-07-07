@@ -10,6 +10,7 @@ import { useSettings } from '../../context/SettingsContext';
 import * as customersApi from '../../api/customers';
 import * as vehiclesApi from '../../api/vehicles';
 import * as rentalsApi from '../../api/rentals';
+import * as staffApi from '../../api/staff';
 import CustomerFormModal from '../customers/CustomerFormModal';
 import { formatCurrency, toDateTimeInputValue } from '../../utils/format';
 
@@ -36,6 +37,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const [step, setStep] = useState(0);
   const [customers, setCustomers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
+  const [staffList, setStaffList] = useState([]);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
@@ -45,12 +47,15 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     scheduled_start: defaultStart(), scheduled_end: defaultEnd(), booked_days: 1,
     odometer_start: '', payment_timing: 'later', security_deposit_collected: false,
     security_deposit_amount: '', daily_rate: '',
+    assigned_staff: '', pickup_venue: 'parking',
+    pickup_venue_other_location: '', pickup_venue_other_link: '', driver_delivery_charge: '0',
   });
 
   useEffect(() => {
     if (open) {
       customersApi.listCustomers({ page_size: 500 }).then((d) => setCustomers(d.results || d));
       vehiclesApi.listVehicles({ status: 'available', page_size: 500 }).then((d) => setVehicles(d.results || d));
+      staffApi.listStaff({ is_active: true }).then((d) => setStaffList(d.results || d)).catch(() => {});
       setStep(0);
       setErrors({});
     }
@@ -62,8 +67,9 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     if (!selectedVehicle) return 0;
     const base = Number(form.daily_rate || 0) * Number(form.booked_days || 1);
     const gst = base * (Number(settings?.gst_percent || 0) / 100);
-    return base + gst;
-  }, [selectedVehicle, form.daily_rate, form.booked_days, settings]);
+    const delivery = form.pickup_venue === 'other' ? Number(form.driver_delivery_charge || 0) : 0;
+    return base + gst + delivery;
+  }, [selectedVehicle, form.daily_rate, form.booked_days, form.pickup_venue, form.driver_delivery_charge, settings]);
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -108,12 +114,17 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     if (!validateStep()) return;
     setSubmitting(true);
     try {
+      const isOther = form.pickup_venue === 'other';
       const payload = {
         ...form,
         scheduled_start: new Date(form.scheduled_start).toISOString(),
         scheduled_end: new Date(form.scheduled_end).toISOString(),
         odometer_start: Number(form.odometer_start),
         security_deposit_amount: form.security_deposit_collected ? Number(form.security_deposit_amount || 0) : 0,
+        assigned_staff: form.assigned_staff || null,
+        driver_delivery_charge: isOther ? Number(form.driver_delivery_charge || 0) : 0,
+        pickup_venue_other_location: isOther ? form.pickup_venue_other_location : '',
+        pickup_venue_other_link: isOther ? form.pickup_venue_other_link : '',
       };
       const rental = await rentalsApi.createRental(payload);
       showToast(`Booking ${rental.invoice_number} created successfully`);
@@ -220,6 +231,54 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
               <Input label="Destination" value={form.destination} onChange={(e) => update('destination', e.target.value)} placeholder="e.g. Madurai" />
               <Input label="Purpose of Trip" value={form.purpose} onChange={(e) => update('purpose', e.target.value)} placeholder="e.g. Family vacation" />
             </div>
+            {/* Staff & Venue */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1.5">Assigned Driver (optional)</label>
+                <select
+                  value={form.assigned_staff}
+                  onChange={(e) => update('assigned_staff', e.target.value)}
+                  className="w-full border border-navy-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy-400 text-navy-800"
+                >
+                  <option value="">No driver assigned</option>
+                  {staffList.map((s) => (
+                    <option key={s.id} value={s.id}>{s.full_name} · {s.role.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-700 mb-1.5">Pickup Venue</label>
+                <select
+                  value={form.pickup_venue}
+                  onChange={(e) => {
+                    update('pickup_venue', e.target.value);
+                    if (e.target.value !== 'other') update('driver_delivery_charge', '0');
+                  }}
+                  className="w-full border border-navy-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy-400 text-navy-800"
+                >
+                  <option value="parking">Parking (no charge)</option>
+                  <option value="airport">Airport (no charge)</option>
+                  <option value="other">Other Location</option>
+                </select>
+              </div>
+            </div>
+            {form.pickup_venue === 'other' && (
+              <div className="border border-amber-100 bg-amber-50/40 rounded-lg p-3 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label="Delivery Location" value={form.pickup_venue_other_location}
+                    onChange={(e) => update('pickup_venue_other_location', e.target.value)}
+                    placeholder="e.g. Hotel XYZ, Chennai" />
+                  <Input label="Location Link (Maps URL)" value={form.pickup_venue_other_link}
+                    onChange={(e) => update('pickup_venue_other_link', e.target.value)}
+                    placeholder="https://maps.google.com/..." />
+                </div>
+                <Input label="Driver Delivery Charge (₹)" type="number" min="0" step="0.01"
+                  value={form.driver_delivery_charge}
+                  onChange={(e) => update('driver_delivery_charge', e.target.value)}
+                  hint="This will be added to the rental total and collected from the customer" />
+              </div>
+            )}
+
             {selectedVehicle && (
               <div className="space-y-3">
                 <Input
@@ -236,6 +295,9 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
                 <div className="bg-navy-50/60 border border-navy-100 rounded-lg px-4 py-3 flex items-center justify-between">
                   <span className="text-sm text-navy-600">
                     {formatCurrency(form.daily_rate || 0, symbol)}/day × {form.booked_days} day(s)
+                    {form.pickup_venue === 'other' && Number(form.driver_delivery_charge) > 0 && (
+                      <span className="ml-2 text-amber-600">+ {formatCurrency(form.driver_delivery_charge, symbol)} delivery</span>
+                    )}
                   </span>
                   <span className="text-base font-semibold text-navy-900 tabular-nums">
                     ≈ {formatCurrency(estimatedTotal, symbol)} estimated
@@ -292,6 +354,17 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
               <p className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Booking Summary</p>
               <SummaryRow label="Vehicle" value={selectedVehicle ? `${selectedVehicle.registration_number} (${selectedVehicle.make} ${selectedVehicle.model})` : '-'} />
               <SummaryRow label="Duration" value={`${form.booked_days} day(s)`} />
+              {form.assigned_staff && (
+                <SummaryRow label="Driver" value={staffList.find((s) => String(s.id) === String(form.assigned_staff))?.full_name || '-'} />
+              )}
+              <SummaryRow label="Pickup Venue" value={
+                form.pickup_venue === 'parking' ? 'Parking' :
+                form.pickup_venue === 'airport' ? 'Airport' :
+                form.pickup_venue_other_location || 'Other Location'
+              } />
+              {form.pickup_venue === 'other' && Number(form.driver_delivery_charge) > 0 && (
+                <SummaryRow label="Delivery Charge" value={formatCurrency(form.driver_delivery_charge, symbol)} />
+              )}
               <SummaryRow label="Estimated Total" value={formatCurrency(estimatedTotal, symbol)} bold />
               <SummaryRow label="Payment Timing" value={form.payment_timing === 'now' ? 'Pay Now' : 'Pay Later'} />
             </div>

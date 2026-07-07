@@ -124,6 +124,9 @@ def build_invoice_pdf(rental, settings_obj) -> bytes:
         charge_rows.append(["Extra KM Charge", f"{sym}{rental.extra_km_amount}"])
     if rental.damage_charge_amount and rental.damage_charge_amount > 0:
         charge_rows.append(["Damage Charge", f"{sym}{rental.damage_charge_amount}"])
+    if rental.driver_delivery_charge and rental.driver_delivery_charge > 0:
+        staff_label = rental.assigned_staff.full_name if rental.assigned_staff else "Driver"
+        charge_rows.append([f"Driver Delivery — {staff_label}", f"{sym}{rental.driver_delivery_charge}"])
     charge_rows.append([f"GST ({rental.gst_percent_snapshot}%)", f"{sym}{rental.gst_amount}"])
     charge_rows.append(["TOTAL", f"{sym}{rental.total_amount}"])
     charge_rows.append(["Amount Paid", f"{sym}{rental.amount_paid}"])

@@ -53,6 +53,32 @@ def salary_summary(staff, year: int, month: int):
     )
     paid_this_month = q2(Decimal(str(paid_this_month)))
 
+    # Delivery earnings: rentals where this staff is assigned driver, in this month
+    from rentals.models import Rental
+    delivery_qs = list(
+        Rental.objects.filter(
+            assigned_staff=staff,
+            scheduled_start__year=year,
+            scheduled_start__month=month,
+            driver_delivery_charge__gt=0,
+        ).exclude(status='cancelled').select_related('customer').order_by('scheduled_start')
+    )
+    delivery_earnings = q2(sum(
+        (Decimal(str(r.driver_delivery_charge)) for r in delivery_qs), Decimal('0')
+    ))
+    delivery_breakdown = [
+        {
+            'rental_id': r.id,
+            'customer': r.customer.full_name,
+            'date': str(r.scheduled_start.date()),
+            'location': r.pickup_venue_other_location or r.get_pickup_venue_display(),
+            'amount': str(q2(Decimal(str(r.driver_delivery_charge)))),
+        }
+        for r in delivery_qs
+    ]
+
+    total_payable = q2(calculated_amount + delivery_earnings)
+
     return {
         'total_days': total_days,
         'working_days': working_days,
@@ -63,8 +89,11 @@ def salary_summary(staff, year: int, month: int):
         'deduction_days': deduction_days,
         'per_day': q2(per_day),
         'calculated_amount': calculated_amount,
+        'delivery_earnings': delivery_earnings,
+        'delivery_breakdown': delivery_breakdown,
+        'total_payable': total_payable,
         'paid_this_month': paid_this_month,
-        'balance': q2(calculated_amount - paid_this_month),
+        'balance': q2(total_payable - paid_this_month),
     }
 
 

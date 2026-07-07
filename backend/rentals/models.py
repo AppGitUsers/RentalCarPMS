@@ -8,6 +8,13 @@ from owners.models import CarOwner
 from vehicles.models import Vehicle
 
 
+PICKUP_VENUE_CHOICES = [
+    ('parking', 'Parking'),
+    ('airport', 'Airport'),
+    ('other', 'Other Location'),
+]
+
+
 def q2(value):
     """Quantize a Decimal to 2 places, half-up, the way money should round."""
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -40,6 +47,18 @@ class Rental(models.Model):
     )
     destination = models.CharField(max_length=200, blank=True, default="")
     purpose = models.CharField(max_length=200, blank=True, default="", help_text="Purpose/reason for the trip.")
+
+    # ---- Staff / delivery ----
+    assigned_staff = models.ForeignKey(
+        'staff.StaffMember', on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='assigned_rentals',
+    )
+    pickup_venue = models.CharField(
+        max_length=20, choices=PICKUP_VENUE_CHOICES, default='parking',
+    )
+    pickup_venue_other_location = models.CharField(max_length=200, blank=True, default="")
+    pickup_venue_other_link = models.CharField(max_length=500, blank=True, default="")
+    driver_delivery_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
     scheduled_start = models.DateTimeField()
     scheduled_end = models.DateTimeField()
@@ -160,7 +179,7 @@ class Rental(models.Model):
 
         subtotal = self.base_amount + self.late_fee_amount + self.extra_km_amount + self.damage_charge_amount
         self.gst_amount = q2(subtotal * Decimal(self.gst_percent_snapshot) / Decimal(100))
-        self.total_amount = q2(subtotal + self.gst_amount)
+        self.total_amount = q2(subtotal + self.gst_amount + self.driver_delivery_charge)
 
         self.status = "closed"
         self.closed_at = timezone.now()
