@@ -53,24 +53,24 @@ export default function RentalsPage() {
 
   const clearDateFilters = () => { setStartFrom(''); setStartTo(''); setEndFrom(''); setEndTo(''); };
 
-  useEffect(() => {
-    rentalsApi.getActiveRentals().then(setActiveRentals);
-    const today = new Date().toISOString().split('T')[0];
-    rentalsApi.listRentals({ status: 'booked', scheduled_start_after: today, page_size: 1 })
-      .then((d) => setUpcomingCount(d.count || 0));
-  }, []);
-
   const load = useCallback(() => {
     setLoading(true);
-    rentalsApi.listRentals({
-      search: debouncedSearch || undefined,
-      status: statusFilter || undefined,
-      payment_status: paymentFilter || undefined,
-      scheduled_start_after:  startFrom || undefined,
-      scheduled_start_before: startTo   || undefined,
-      scheduled_end_after:    endFrom   || undefined,
-      scheduled_end_before:   endTo     || undefined,
-    }).then((data) => {
+    const today = new Date().toISOString().split('T')[0];
+    Promise.all([
+      rentalsApi.getActiveRentals(),
+      rentalsApi.listRentals({ status: 'booked', scheduled_start_after: today, page_size: 1 }),
+      rentalsApi.listRentals({
+        search: debouncedSearch || undefined,
+        status: statusFilter || undefined,
+        payment_status: paymentFilter || undefined,
+        scheduled_start_after:  startFrom || undefined,
+        scheduled_start_before: startTo   || undefined,
+        scheduled_end_after:    endFrom   || undefined,
+        scheduled_end_before:   endTo     || undefined,
+      }),
+    ]).then(([active, upcoming, data]) => {
+      setActiveRentals(active);
+      setUpcomingCount(upcoming.count || 0);
       setRentals(data.results || data);
       setTotalCount(data.count ?? (data.results || data).length);
     }).finally(() => setLoading(false));
