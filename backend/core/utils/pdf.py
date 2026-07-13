@@ -1,7 +1,10 @@
 import io
+import logging
 import os
 
 from reportlab.lib import colors
+
+logger = logging.getLogger(__name__)
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -48,6 +51,7 @@ def _styles():
 
 def build_invoice_pdf(rental, settings_obj) -> bytes:
     """Generates a professional invoice PDF for a closed/active rental."""
+    logger.info("Building invoice PDF for Rental #%s (%s)", rental.id, rental.invoice_number)
     styles = _styles()
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -165,11 +169,14 @@ def build_invoice_pdf(rental, settings_obj) -> bytes:
         elements.append(Paragraph(settings_obj.invoice_footer_note, styles["Body"]))
 
     doc.build(elements)
+    pdf_kb = len(buffer.getvalue()) / 1024
+    logger.info("Invoice PDF built for Rental #%s — %.0fKB", rental.id, pdf_kb)
     return buffer.getvalue()
 
 
 def build_agreement_pdf(rental, settings_obj) -> bytes:
     """Generates a rental agreement PDF capturing terms, customer & vehicle details."""
+    logger.info("Building agreement PDF for Rental #%s (%s)", rental.id, rental.invoice_number)
     styles = _styles()
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -255,4 +262,6 @@ def build_agreement_pdf(rental, settings_obj) -> bytes:
     elements.append(sign_table)
 
     doc.build(elements)
+    pdf_kb = len(buffer.getvalue()) / 1024
+    logger.info("Agreement PDF built for Rental #%s — %.0fKB", rental.id, pdf_kb)
     return buffer.getvalue()

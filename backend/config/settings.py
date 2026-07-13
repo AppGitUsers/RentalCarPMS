@@ -176,3 +176,41 @@ CORS_ALLOW_CREDENTIALS = True
 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10 MB
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
+
+
+# ---- Logging ----
+# Writes to stdout so systemd / journalctl captures everything automatically.
+# Our app modules log at INFO; Django internals log at WARNING only (less noise).
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {name}: {message}',
+            'style': '{',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'accounts':  {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'rentals':   {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'customers': {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'vehicles':  {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'staff':     {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'owners':    {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'finance':   {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'core':      {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
+        'django':         {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
+        'django.request': {'handlers': ['console'], 'level': 'ERROR',   'propagate': False},
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'WARNING',
+    },
+}

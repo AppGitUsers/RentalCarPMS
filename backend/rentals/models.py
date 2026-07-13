@@ -1,7 +1,10 @@
+import logging
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import models
 from django.utils import timezone
+
+logger = logging.getLogger(__name__)
 
 from customers.models import Customer
 from owners.models import CarOwner
@@ -197,6 +200,12 @@ class Rental(models.Model):
         self.vehicle.current_odometer = self.odometer_end
         self.vehicle.save(update_fields=["status", "current_odometer"])
 
+        logger.info(
+            "Rental #%s closed — base: %s, late fee: %s, extra km: %s, damage: %s, delivery: %s, GST: %s, total: %s, payment: %s",
+            self.id, self.base_amount, self.late_fee_amount, self.extra_km_amount,
+            self.damage_charge_amount, self.driver_delivery_charge,
+            self.gst_amount, self.total_amount, self.payment_status,
+        )
         return self
 
     def km_covered(self):

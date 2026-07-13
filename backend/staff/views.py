@@ -1,3 +1,5 @@
+import logging
+
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django_filters.rest_framework import DjangoFilterBackend
@@ -14,6 +16,8 @@ from .serializers import (
 )
 from .services import CL_PER_MONTH, next_attendance_status, salary_summary
 
+logger = logging.getLogger(__name__)
+
 
 class StaffMemberViewSet(viewsets.ModelViewSet):
     queryset = StaffMember.objects.all().order_by('full_name')
@@ -27,6 +31,18 @@ class StaffMemberViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return StaffMemberListSerializer
         return StaffMemberSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        logger.info("Staff member added — #%s %s, role: %s, salary: %s", instance.id, instance.full_name, instance.role, instance.monthly_salary)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        logger.info("Staff member updated — #%s %s, active: %s", instance.id, instance.full_name, instance.is_active)
+
+    def perform_destroy(self, instance):
+        logger.info("Staff member deleted — #%s %s", instance.id, instance.full_name)
+        instance.delete()
 
     @action(detail=True, methods=['get'])
     def salary_summary(self, request, pk=None):
@@ -61,6 +77,11 @@ class StaffMemberViewSet(viewsets.ModelViewSet):
             deduction_days=summary.get('deduction_days', 0),
             amount=amount,
             notes=notes,
+        )
+        logger.info(
+            "Salary payment recorded — %s: %s for %s/%s (present: %s, absent: %s)",
+            staff.full_name, payment.amount, month, year,
+            payment.working_days, payment.absent_days,
         )
         return Response(StaffPaymentSerializer(payment).data, status=201)
 
@@ -123,4 +144,8 @@ class StaffAttendanceViewSet(viewsets.ViewSet):
         else:
             StaffAttendance.objects.create(staff=staff, date=day, status=new_status)
 
+        logger.info(
+            "Attendance toggled — %s on %s: %s → %s",
+            staff.full_name, date_str, current_status or 'present', new_status or 'present',
+        )
         return Response({'date': date_str, 'status': new_status})

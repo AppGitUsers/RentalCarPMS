@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.db import transaction
@@ -15,6 +16,8 @@ from rentals.services import compute_owner_outstanding_balance, compute_owner_sh
 from .models import CarOwner
 from .serializers import CarOwnerListSerializer, CarOwnerSerializer
 
+logger = logging.getLogger(__name__)
+
 
 class CarOwnerViewSet(viewsets.ModelViewSet):
     queryset = CarOwner.objects.prefetch_related('vehicles__owner_rate').all().order_by('name')
@@ -29,6 +32,18 @@ class CarOwnerViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return CarOwnerListSerializer
         return CarOwnerSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        logger.info("Car owner added — #%s %s (%s)", instance.id, instance.name, instance.phone)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        logger.info("Car owner updated — #%s %s", instance.id, instance.name)
+
+    def perform_destroy(self, instance):
+        logger.info("Car owner deleted — #%s %s", instance.id, instance.name)
+        instance.delete()
 
     @action(detail=True, methods=['get'])
     def payout_qr(self, request, pk=None):
@@ -90,6 +105,10 @@ class CarOwnerViewSet(viewsets.ModelViewSet):
                 owner=owner, payout_type='single', amount=amount, notes=notes,
             )
             payout.rentals.add(rental)
+        logger.info(
+            "Owner payout (single) — %s: %s for Rental #%s",
+            owner.name, amount, rental.id,
+        )
         return Response({'detail': 'Payout recorded.', 'payout_id': payout.id, 'amount': str(amount)})
 
     @action(detail=True, methods=['post'])
@@ -113,6 +132,10 @@ class CarOwnerViewSet(viewsets.ModelViewSet):
                 owner=owner, payout_type='collective', amount=amount, notes=notes,
             )
             payout.rentals.set(list(rentals))
+        logger.info(
+            "Owner payout (collective) — %s: %s across %s rental(s)",
+            owner.name, amount, rentals.count(),
+        )
         return Response({'detail': 'Collective payout recorded.', 'payout_id': payout.id, 'amount': str(amount)})
 
     @action(detail=True, methods=['get'])

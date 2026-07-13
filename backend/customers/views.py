@@ -1,3 +1,5 @@
+import logging
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
@@ -7,6 +9,8 @@ from rest_framework.response import Response
 
 from .models import Customer
 from .serializers import CustomerListSerializer, CustomerSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class CustomerViewSet(viewsets.ModelViewSet):
@@ -21,6 +25,18 @@ class CustomerViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return CustomerListSerializer
         return CustomerSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        logger.info("Customer created — #%s %s (%s)", instance.id, instance.full_name, instance.phone)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        logger.info("Customer updated — #%s %s", instance.id, instance.full_name)
+
+    def perform_destroy(self, instance):
+        logger.info("Customer deleted — #%s %s (%s)", instance.id, instance.full_name, instance.phone)
+        instance.delete()
 
     @action(detail=True, methods=['get'])
     def rental_history(self, request, pk=None):

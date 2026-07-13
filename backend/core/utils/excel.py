@@ -1,6 +1,9 @@
 import io
+import logging
 
 from openpyxl import Workbook
+
+logger = logging.getLogger(__name__)
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
@@ -68,4 +71,13 @@ def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payme
 
     buffer = io.BytesIO()
     wb.save(buffer)
+    excel_kb = len(buffer.getvalue()) / 1024
+    period = label or f"{month}/{year}"
+    logger.info(
+        "Finance Excel built — period: %s, rentals: %s, expenses: %s, owner payouts: %s, salary payments: %s, size: %.0fKB",
+        period,
+        sum(1 for _ in rentals_qs), sum(1 for _ in expense_entries),
+        sum(1 for _ in owner_payouts), sum(1 for _ in salary_payments),
+        excel_kb,
+    )
     return buffer.getvalue()

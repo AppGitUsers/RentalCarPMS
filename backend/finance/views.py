@@ -1,3 +1,5 @@
+import logging
+
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
@@ -13,6 +15,8 @@ from .models import FinanceEntry
 from .serializers import FinanceEntrySerializer
 from .services import get_finance_summary, get_monthly_trend
 
+logger = logging.getLogger(__name__)
+
 
 class FinanceEntryViewSet(viewsets.ModelViewSet):
     queryset = FinanceEntry.objects.all().order_by('-date')
@@ -23,6 +27,18 @@ class FinanceEntryViewSet(viewsets.ModelViewSet):
     filterset_fields = ['entry_type', 'category']
     search_fields = ['title', 'notes']
     ordering_fields = ['date', 'amount']
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        logger.info("Finance entry added — %s: %s %s (%s)", instance.entry_type, instance.amount, instance.title, instance.date)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        logger.info("Finance entry updated — #%s %s %s", instance.id, instance.entry_type, instance.title)
+
+    def perform_destroy(self, instance):
+        logger.info("Finance entry deleted — #%s %s %s", instance.id, instance.entry_type, instance.title)
+        instance.delete()
 
 
 class FinanceSummaryView(APIView):
@@ -66,7 +82,15 @@ class FinanceExcelExportView(APIView):
             paid_at__year=year, paid_at__month=month,
         )
 
-        excel_bytes = build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month, year)
+        try:
+            excel_bytes = build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month, year)
+        except Exception:
+            logger.exception("Finance Excel export failed for %s/%s", month, year)
+            raise
+        logger.info(
+            "Finance Excel exported — %s/%s: %s rentals, %s expenses, %s owner payouts, %s salary payments",
+            month, year, rentals_qs.count(), expense_entries.count(), owner_payouts.count(), salary_payments.count(),
+        )
         response = HttpResponse(excel_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename="Finance_Report_{month}_{year}.xlsx"'
         return response
@@ -100,9 +124,17 @@ class FinanceDateRangeExcelExportView(APIView):
         )
 
         label = f"{date_from.strftime('%d%b%Y')}_to_{date_to.strftime('%d%b%Y')}"
-        excel_bytes = build_finance_excel(
-            rentals_qs, expense_entries, owner_payouts, salary_payments,
-            label=label,
+        try:
+            excel_bytes = build_finance_excel(
+                rentals_qs, expense_entries, owner_payouts, salary_payments,
+                label=label,
+            )
+        except Exception:
+            logger.exception("Finance Excel range export failed for %s to %s", date_from, date_to)
+            raise
+        logger.info(
+            "Finance Excel range exported — %s to %s: %s rentals, %s expenses",
+            date_from, date_to, rentals_qs.count(), expense_entries.count(),
         )
         response = HttpResponse(excel_bytes, content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
         response['Content-Disposition'] = f'attachment; filename="Finance_Report_{label}.xlsx"'

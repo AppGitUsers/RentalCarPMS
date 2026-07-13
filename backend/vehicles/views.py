@@ -1,3 +1,5 @@
+import logging
+
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, viewsets
 from rest_framework.decorators import action
@@ -7,6 +9,8 @@ from rest_framework.response import Response
 
 from .models import Vehicle, VehicleImage, VehicleOwnerRate
 from .serializers import VehicleImageSerializer, VehicleListSerializer, VehicleOwnerRateSerializer, VehicleSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class VehicleViewSet(viewsets.ModelViewSet):
@@ -22,6 +26,18 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return VehicleListSerializer
         return VehicleSerializer
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        logger.info("Vehicle added — #%s %s (%s %s)", instance.id, instance.registration_number, instance.make, instance.model)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        logger.info("Vehicle updated — #%s %s, status: %s", instance.id, instance.registration_number, instance.status)
+
+    def perform_destroy(self, instance):
+        logger.info("Vehicle deleted — #%s %s", instance.id, instance.registration_number)
+        instance.delete()
 
     @action(detail=False, methods=['get'])
     def status_summary(self, request):
@@ -42,6 +58,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
         if not image:
             return Response({'detail': 'image file required.'}, status=400)
         img = VehicleImage.objects.create(vehicle=vehicle, image=image, caption=caption)
+        logger.info("Gallery image uploaded for vehicle %s (image #%s)", vehicle.registration_number, img.id)
         return Response(VehicleImageSerializer(img).data, status=201)
 
     @action(detail=True, methods=['delete'], url_path='gallery_image/(?P<image_id>[^/.]+)')
@@ -82,11 +99,15 @@ class VehicleViewSet(viewsets.ModelViewSet):
             serializer = VehicleOwnerRateSerializer(r, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
+            logger.info("Owner rate updated for vehicle %s — daily: %s, owner amount: %s",
+                        vehicle.registration_number, serializer.data.get('vehicle_daily_rate'), serializer.data.get('owner_daily_amount'))
             return Response(serializer.data, status=200)
         except VehicleOwnerRate.DoesNotExist:
             serializer = VehicleOwnerRateSerializer(data=request.data)
             serializer.is_valid(raise_exception=True)
             serializer.save(vehicle=vehicle)
+            logger.info("Owner rate created for vehicle %s — daily: %s, owner amount: %s",
+                        vehicle.registration_number, serializer.data.get('vehicle_daily_rate'), serializer.data.get('owner_daily_amount'))
             return Response(serializer.data, status=201)
 
     @action(detail=False, methods=['get'])

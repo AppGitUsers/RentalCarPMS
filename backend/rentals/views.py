@@ -1,3 +1,4 @@
+import logging
 from decimal import Decimal
 
 from django.db import transaction
@@ -18,6 +19,8 @@ from .models import Rental, RentalPayment
 from .serializers import (
     RentalCreateSerializer, RentalDetailSerializer, RentalListSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class RentalViewSet(viewsets.ModelViewSet):
@@ -54,6 +57,11 @@ class RentalViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         rental = serializer.save()
+        logger.info(
+            "Rental #%s created — customer: %s, vehicle: %s, %s day(s), start: %s",
+            rental.id, rental.customer.full_name, rental.vehicle.registration_number,
+            rental.booked_days, rental.scheduled_start.strftime('%Y-%m-%d %H:%M'),
+        )
         return Response(RentalDetailSerializer(rental).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['post'])
@@ -76,6 +84,10 @@ class RentalViewSet(viewsets.ModelViewSet):
                 rental.vehicle.current_odometer = odometer_start
             rental.vehicle.save(update_fields=['status', 'current_odometer'])
 
+        logger.info(
+            "Rental #%s started — vehicle %s handed to %s, odometer: %s km",
+            rental.id, rental.vehicle.registration_number, rental.customer.full_name, odometer_start,
+        )
         return Response(RentalDetailSerializer(rental).data)
 
     @action(detail=True, methods=['post'])
@@ -109,6 +121,11 @@ class RentalViewSet(viewsets.ModelViewSet):
                 damage_notes=damage_notes,
             )
 
+        logger.info(
+            "Rental #%s closed — vehicle %s returned, km covered: %s, total: %s, balance: %s",
+            rental.id, rental.vehicle.registration_number,
+            rental.km_covered(), rental.total_amount, rental.balance_due,
+        )
         return Response(RentalDetailSerializer(rental).data)
 
     @action(detail=True, methods=['post'])
@@ -123,6 +140,10 @@ class RentalViewSet(viewsets.ModelViewSet):
             if was_active:
                 rental.vehicle.status = 'available'
                 rental.vehicle.save(update_fields=['status'])
+        logger.info(
+            "Rental #%s cancelled — customer: %s, vehicle: %s (was_active: %s)",
+            rental.id, rental.customer.full_name, rental.vehicle.registration_number, was_active,
+        )
         return Response(RentalDetailSerializer(rental).data)
 
     @action(detail=True, methods=['post'])
@@ -164,6 +185,11 @@ class RentalViewSet(viewsets.ModelViewSet):
             rental.total_amount = new_total
             rental.save()
 
+        logger.info(
+            "Rental #%s extended by %s day(s) at %s/day — new total: %s, new end: %s",
+            rental.id, extension_days, extension_rate,
+            rental.total_amount, rental.scheduled_end.strftime('%Y-%m-%d %H:%M'),
+        )
         return Response(RentalDetailSerializer(rental).data)
 
     @action(detail=True, methods=['get'])
@@ -193,6 +219,10 @@ class RentalViewSet(viewsets.ModelViewSet):
                 rental.payment_status = 'partial'
             rental.save(update_fields=['amount_paid', 'payment_status'])
 
+        logger.info(
+            "Payment recorded — Rental #%s: %s via %s, total paid: %s, status: %s",
+            rental.id, payment.amount, method, rental.amount_paid, rental.payment_status,
+        )
         return Response(RentalDetailSerializer(rental).data)
 
     @action(detail=True, methods=['get'])
@@ -222,7 +252,12 @@ class RentalViewSet(viewsets.ModelViewSet):
     def invoice_pdf(self, request, pk=None):
         rental = self.get_object()
         settings_obj = ApplicationSettings.load()
-        pdf_bytes = build_invoice_pdf(rental, settings_obj)
+        try:
+            pdf_bytes = build_invoice_pdf(rental, settings_obj)
+        except Exception:
+            logger.exception("Invoice PDF generation failed for Rental #%s", rental.id)
+            raise
+        logger.info("Invoice PDF generated for Rental #%s (%s)", rental.id, rental.invoice_number)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="{rental.invoice_number}.pdf"'
         return response
@@ -231,7 +266,12 @@ class RentalViewSet(viewsets.ModelViewSet):
     def agreement_pdf(self, request, pk=None):
         rental = self.get_object()
         settings_obj = ApplicationSettings.load()
-        pdf_bytes = build_agreement_pdf(rental, settings_obj)
+        try:
+            pdf_bytes = build_agreement_pdf(rental, settings_obj)
+        except Exception:
+            logger.exception("Agreement PDF generation failed for Rental #%s", rental.id)
+            raise
+        logger.info("Agreement PDF generated for Rental #%s (%s)", rental.id, rental.invoice_number)
         response = HttpResponse(pdf_bytes, content_type='application/pdf')
         response['Content-Disposition'] = f'attachment; filename="Agreement-{rental.invoice_number}.pdf"'
         return response

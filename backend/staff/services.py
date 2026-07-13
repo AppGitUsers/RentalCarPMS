@@ -1,8 +1,11 @@
 import calendar as _cal
+import logging
 from datetime import date as _date
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Sum
+
+logger = logging.getLogger(__name__)
 
 
 CL_PER_MONTH = 2
@@ -79,7 +82,7 @@ def salary_summary(staff, year: int, month: int):
 
     total_payable = q2(calculated_amount + delivery_earnings)
 
-    return {
+    result = {
         'total_days': total_days,
         'working_days': working_days,
         'present_days': present_days,
@@ -95,6 +98,13 @@ def salary_summary(staff, year: int, month: int):
         'paid_this_month': paid_this_month,
         'balance': q2(total_payable - paid_this_month),
     }
+    logger.info(
+        "Salary summary — %s %s/%s: present=%s absent=%s CL=%s salary=%s delivery=%s payable=%s paid=%s balance=%s",
+        staff.full_name, month, year,
+        present_days, absent_days, cl_days,
+        calculated_amount, delivery_earnings, total_payable, paid_this_month, result['balance'],
+    )
+    return result
 
 
 def next_attendance_status(current_status, cl_available: int):
