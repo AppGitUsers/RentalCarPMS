@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CarFront, Lock, User as UserIcon } from 'lucide-react';
+import { Lock, User as UserIcon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -40,10 +40,8 @@ export default function LoginPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-amber-500 flex items-center justify-center mb-4 shadow-lg">
-            <CarFront className="w-7 h-7 text-white" />
-          </div>
-          <h1 className="text-xl font-semibold text-white">DriveDesk PMS</h1>
+          <img src="/drive_pilot_icon.jpg" alt="DrivePilot" className="w-14 h-14 rounded-2xl object-cover mb-4 shadow-lg" />
+          <h1 className="text-xl font-semibold text-white">DrivePilot</h1>
           <p className="text-sm text-navy-300 mt-1">Sign in to manage your car rental business</p>
         </div>
 
