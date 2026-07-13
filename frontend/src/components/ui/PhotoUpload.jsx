@@ -49,6 +49,7 @@ export default function PhotoUpload({ label, value, existingUrl, onChange, class
           ref={inputRef}
           type="file"
           accept="image/*"
+          capture="environment"
           className="hidden"
           onChange={(e) => handleFile(e.target.files?.[0])}
         />
