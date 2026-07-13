@@ -145,6 +145,7 @@ function StaffLoginsCard() {
   const [staffList, setStaffList] = useState([]);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [staffMemberId, setStaffMemberId] = useState('');
   const [creating, setCreating] = useState(false);
   const [changingPwId, setChangingPwId] = useState(null);
@@ -170,6 +171,7 @@ function StaffLoginsCard() {
   const handleCreate = async () => {
     if (!username.trim()) { showToast('Username is required', 'error'); return; }
     if (password.length < 4) { showToast('Password must be at least 4 characters', 'error'); return; }
+    if (password !== confirmPassword) { showToast('Passwords do not match', 'error'); return; }
     setCreating(true);
     try {
       await authApi.createStaffAccount({
@@ -178,7 +180,7 @@ function StaffLoginsCard() {
         staff_member: staffMemberId ? Number(staffMemberId) : null,
       });
       showToast('Staff login created');
-      setUsername(''); setPassword(''); setStaffMemberId('');
+      setUsername(''); setPassword(''); setConfirmPassword(''); setStaffMemberId('');
       load();
     } catch (err) {
       const data = err.response?.data;
@@ -266,7 +268,7 @@ function StaffLoginsCard() {
       {/* Create new */}
       <div className="border-t border-navy-100 pt-4 space-y-3">
         <p className="text-xs font-semibold text-navy-600 uppercase tracking-wide">Create New Staff Login</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Input
             label="Username"
             value={username}
@@ -279,6 +281,13 @@ function StaffLoginsCard() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Min 4 characters"
+          />
+          <Input
+            label="Confirm Password"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="Re-enter password"
           />
         </div>
         <Select
