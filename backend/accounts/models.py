@@ -3,15 +3,15 @@ from django.db import models
 
 
 class AdminUser(AbstractUser):
-    """
-    Single-admin model. This is a superuser-only system - there is only ever
-    expected to be one (or a small handful of) admin accounts that have full
-    control. We extend AbstractUser so we can track last_activity for the
-    24-hour forced re-login behaviour at the JWT layer.
-    """
+    ROLE_CHOICES = [('admin', 'Admin'), ('staff', 'Staff')]
 
     phone = models.CharField(max_length=20, blank=True, default="")
     last_activity = models.DateTimeField(null=True, blank=True)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='admin')
+    staff_member = models.OneToOneField(
+        'staff.StaffMember', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='user_account',
+    )
 
     class Meta:
         verbose_name = "Admin User"

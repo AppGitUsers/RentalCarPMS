@@ -1,15 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Save, Building2, Percent, Receipt, ImageIcon } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Save, Building2, Percent, Receipt, ImageIcon, Users, Plus, Trash2, KeyRound } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
 import Card, { CardHeader } from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import TextArea from '../../components/ui/TextArea';
 import PhotoUpload from '../../components/ui/PhotoUpload';
 import Button from '../../components/ui/Button';
+import Select from '../../components/ui/Select';
 import { PageLoader } from '../../components/ui/Feedback';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../components/ui/Toast';
 import * as settingsApi from '../../api/settings';
+import * as authApi from '../../api/auth';
+import * as staffApi from '../../api/staff';
 
 export default function SettingsPage() {
   const { settings, loading, refresh } = useSettings();
@@ -126,10 +129,169 @@ export default function SettingsPage() {
           />
         </Card>
 
+        <StaffLoginsCard />
+
         <div className="flex justify-end pb-4">
           <Button icon={Save} onClick={handleSave} loading={saving} size="lg">Save All Changes</Button>
         </div>
       </div>
     </div>
+  );
+}
+
+function StaffLoginsCard() {
+  const { showToast } = useToast();
+  const [accounts, setAccounts] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [staffMemberId, setStaffMemberId] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [changingPwId, setChangingPwId] = useState(null);
+  const [newPw, setNewPw] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
+
+  const load = useCallback(async () => {
+    const [accs, staff] = await Promise.all([
+      authApi.listStaffAccounts(),
+      staffApi.listStaff({ is_active: true }),
+    ]);
+    setAccounts(accs);
+    setStaffList(staff.results || staff);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const staffOptions = [
+    { value: '', label: 'Common (All Staff)' },
+    ...staffList.map((s) => ({ value: String(s.id), label: s.full_name })),
+  ];
+
+  const handleCreate = async () => {
+    if (!username.trim()) { showToast('Username is required', 'error'); return; }
+    if (password.length < 4) { showToast('Password must be at least 4 characters', 'error'); return; }
+    setCreating(true);
+    try {
+      await authApi.createStaffAccount({
+        username: username.trim(),
+        password,
+        staff_member: staffMemberId ? Number(staffMemberId) : null,
+      });
+      showToast('Staff login created');
+      setUsername(''); setPassword(''); setStaffMemberId('');
+      load();
+    } catch (err) {
+      const data = err.response?.data;
+      showToast(data?.username?.[0] || data?.detail || 'Could not create login', 'error');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    setDeletingId(id);
+    try {
+      await authApi.deleteStaffAccount(id);
+      showToast('Staff login removed');
+      load();
+    } catch {
+      showToast('Could not delete login', 'error');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleChangePw = async (id) => {
+    if (newPw.length < 4) { showToast('Password must be at least 4 characters', 'error'); return; }
+    try {
+      await authApi.changeStaffPassword(id, newPw);
+      showToast('Password updated');
+      setChangingPwId(null);
+      setNewPw('');
+    } catch {
+      showToast('Could not update password', 'error');
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader icon={Users} title="Staff Logins" subtitle="Create login credentials for staff members to access the app" />
+
+      {/* Existing accounts */}
+      {accounts.length > 0 && (
+        <div className="space-y-2 mb-5">
+          {accounts.map((acc) => (
+            <div key={acc.id} className="border border-navy-100 rounded-xl px-4 py-3 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-navy-800">{acc.username}</p>
+                  <p className="text-xs text-navy-400">{acc.staff_member_name}</p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => { setChangingPwId(changingPwId === acc.id ? null : acc.id); setNewPw(''); }}
+                    className="p-1.5 rounded-lg text-navy-400 hover:text-navy-700 hover:bg-navy-50 transition-colors"
+                    title="Change password"
+                  >
+                    <KeyRound className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(acc.id)}
+                    disabled={deletingId === acc.id}
+                    className="p-1.5 rounded-lg text-danger-400 hover:text-danger-600 hover:bg-danger-50 transition-colors disabled:opacity-40"
+                    title="Delete login"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              {changingPwId === acc.id && (
+                <div className="flex gap-2 pt-1">
+                  <input
+                    type="password"
+                    value={newPw}
+                    onChange={(e) => setNewPw(e.target.value)}
+                    placeholder="New password (min 4 chars)"
+                    className="flex-1 text-sm border border-navy-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-navy-300"
+                  />
+                  <Button size="sm" onClick={() => handleChangePw(acc.id)}>Set</Button>
+                  <Button size="sm" variant="secondary" onClick={() => { setChangingPwId(null); setNewPw(''); }}>Cancel</Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create new */}
+      <div className="border-t border-navy-100 pt-4 space-y-3">
+        <p className="text-xs font-semibold text-navy-600 uppercase tracking-wide">Create New Staff Login</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input
+            label="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. staff1 or driver_rajan"
+          />
+          <Input
+            label="Password"
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Min 4 characters"
+          />
+        </div>
+        <Select
+          label="Linked to Staff Member"
+          options={staffOptions}
+          value={staffMemberId}
+          onChange={(e) => setStaffMemberId(e.target.value)}
+          hint="Choose a specific staff or leave as Common so any staff can use this login"
+        />
+        <div className="flex justify-end">
+          <Button icon={Plus} onClick={handleCreate} loading={creating}>Create Login</Button>
+        </div>
+      </div>
+    </Card>
   );
 }

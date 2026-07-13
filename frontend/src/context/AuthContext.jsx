@@ -44,7 +44,7 @@ export function AuthProvider({ children }) {
   const login = async (username, password) => {
     const data = await authApi.login(username, password);
     setSessionExpired(false);
-    setUser({ username: data.username, full_name: data.full_name });
+    setUser({ username: data.username, full_name: data.full_name, role: data.role });
     return data;
   };
 

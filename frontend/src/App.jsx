@@ -21,6 +21,12 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function AdminRoute({ children }) {
+  const { user } = useAuth();
+  if (user?.role === 'staff') return <Navigate to="/" replace />;
+  return children;
+}
+
 function AppRoutes() {
   const { user, loading } = useAuth();
 
@@ -41,9 +47,9 @@ function AppRoutes() {
         <Route path="rentals" element={<RentalsPage />} />
         <Route path="vehicles" element={<VehiclesOwnersPage />} />
         <Route path="customers" element={<CustomersPage />} />
-        <Route path="staff" element={<StaffPage />} />
-        <Route path="finance" element={<FinancePage />} />
-        <Route path="settings" element={<SettingsPage />} />
+        <Route path="staff" element={<AdminRoute><StaffPage /></AdminRoute>} />
+        <Route path="finance" element={<AdminRoute><FinancePage /></AdminRoute>} />
+        <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

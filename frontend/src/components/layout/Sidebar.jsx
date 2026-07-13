@@ -11,14 +11,16 @@ const NAV_ITEMS = [
   { to: '/rentals', label: 'Car Rentals', icon: CalendarRange },
   { to: '/vehicles', label: 'Owners & Cars', icon: Car },
   { to: '/customers', label: 'Customers', icon: UserCircle },
-  { to: '/staff', label: 'Staff', icon: Users },
-  { to: '/finance', label: 'Finance', icon: Wallet },
-  { to: '/settings', label: 'Settings', icon: Settings },
+  { to: '/staff', label: 'Staff', icon: Users, adminOnly: true },
+  { to: '/finance', label: 'Finance', icon: Wallet, adminOnly: true },
+  { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },
 ];
 
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const { open, close } = useSidebar();
+  const isAdmin = !user?.role || user?.role === 'admin';
+  const visibleNav = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin);
 
   return (
     <aside
@@ -38,7 +40,7 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {visibleNav.map(({ to, label, icon: Icon }) => (
           <NavLink
             key={to}
             to={to}
