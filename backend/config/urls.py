@@ -3,6 +3,8 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
+from rentals.views import PublicInvoiceView
+
 urlpatterns = [
     path('admin/', admin.site.urls),
 
@@ -15,6 +17,9 @@ urlpatterns = [
     path('api/staff/', include('staff.urls')),
     path('api/finance/', include('finance.urls')),
     path('api/', include('core.urls')),
+
+    # Public (no auth) — customer-facing invoice share link
+    path('api/public/invoice/<int:pk>/', PublicInvoiceView.as_view(), name='public-invoice'),
 ]
 
 if settings.DEBUG:

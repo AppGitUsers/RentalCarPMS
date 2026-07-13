@@ -7,8 +7,9 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from core.utils.pdf import build_agreement_pdf, build_invoice_pdf
 from core.utils.qr import generate_upi_qr_base64
@@ -286,3 +287,32 @@ class RentalViewSet(viewsets.ModelViewSet):
     def pending_list(self, request):
         rentals = self.get_queryset().filter(status='booked').order_by('scheduled_start')
         return Response(RentalListSerializer(rentals, many=True).data)
+
+
+class PublicInvoiceView(APIView):
+    """Unauthenticated endpoint — returns invoice data for customer-facing share links."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, pk):
+        try:
+            rental = (
+                Rental.objects
+                .select_related('customer', 'vehicle', 'vehicle__owner')
+                .prefetch_related('payments')
+                .get(pk=pk)
+            )
+        except Rental.DoesNotExist:
+            return Response({'detail': 'Invoice not found.'}, status=404)
+
+        settings_obj = ApplicationSettings.load()
+        data = RentalDetailSerializer(rental).data
+        data['company'] = {
+            'name': settings_obj.company_name,
+            'address': settings_obj.company_address,
+            'phone': settings_obj.company_phone,
+            'email': settings_obj.company_email,
+            'logo': request.build_absolute_uri(settings_obj.company_logo.url) if settings_obj.company_logo else None,
+            'currency_symbol': settings_obj.currency_symbol,
+            'footer_note': settings_obj.invoice_footer_note,
+        }
+        return Response(data)

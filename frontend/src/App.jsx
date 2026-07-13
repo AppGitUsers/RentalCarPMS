@@ -12,6 +12,7 @@ import CustomersPage from './pages/customers/CustomersPage';
 import StaffPage from './pages/staff/StaffPage';
 import FinancePage from './pages/finance/FinancePage';
 import SettingsPage from './pages/settings/SettingsPage';
+import PublicInvoicePage from './pages/invoice/PublicInvoicePage';
 import SessionExpiredModal from './components/common/SessionExpiredModal';
 
 function ProtectedRoute({ children }) {
@@ -34,6 +35,7 @@ function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/invoice/:rentalId" element={<PublicInvoicePage />} />
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route
         path="/"
