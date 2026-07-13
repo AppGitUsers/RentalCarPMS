@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, CarFront, Fingerprint,
+  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, Fingerprint,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
@@ -30,11 +30,9 @@ export default function Sidebar() {
       )}
     >
       <div className="flex items-center gap-2.5 px-6 py-6">
-        <div className="w-9 h-9 rounded-lg bg-amber-500 flex items-center justify-center flex-shrink-0">
-          <CarFront className="w-5 h-5 text-white" />
-        </div>
+        <img src="/drive_pilot_icon.jpg" alt="DrivePilot" className="w-9 h-9 rounded-lg object-cover flex-shrink-0" />
         <div className="leading-tight">
-          <div className="font-semibold text-[15px]">DriveDesk PMS</div>
+          <div className="font-semibold text-[15px]">DrivePilot</div>
           <div className="text-[11px] text-navy-300">Car Rental Manager</div>
         </div>
       </div>
