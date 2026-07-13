@@ -1,5 +1,7 @@
 from django.db import models
 
+from core.utils.images import compress_image_field
+
 
 class ApplicationSettings(models.Model):
     """
@@ -72,6 +74,7 @@ class ApplicationSettings(models.Model):
 
     def save(self, *args, **kwargs):
         self.pk = 1
+        compress_image_field(self.company_logo, max_px=800, quality=85)
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):

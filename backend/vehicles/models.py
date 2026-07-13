@@ -1,6 +1,7 @@
 from django.db import models
 
 from owners.models import CarOwner
+from core.utils.images import compress_image_field
 
 
 class Vehicle(models.Model):
@@ -48,6 +49,10 @@ class Vehicle(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def save(self, *args, **kwargs):
+        compress_image_field(self.primary_photo, max_px=1000, quality=85)
+        super().save(*args, **kwargs)
+
     class Meta:
         ordering = ["registration_number"]
 
@@ -80,3 +85,7 @@ class VehicleImage(models.Model):
     image = models.ImageField(upload_to="vehicles/gallery/")
     caption = models.CharField(max_length=100, blank=True, default="")
     uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        compress_image_field(self.image, max_px=1000, quality=85)
+        super().save(*args, **kwargs)

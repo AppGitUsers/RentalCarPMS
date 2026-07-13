@@ -3,6 +3,8 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from django.db import models
 
+from core.utils.images import compress_image_field
+
 
 def q2(value):
     return Decimal(value).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -32,6 +34,10 @@ class StaffMember(models.Model):
     notes = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        compress_image_field(self.photo, max_px=500, quality=85)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ['full_name']

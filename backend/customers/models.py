@@ -1,5 +1,7 @@
 from django.db import models
 
+from core.utils.images import compress_image_field
+
 
 class Customer(models.Model):
     """
@@ -37,6 +39,13 @@ class Customer(models.Model):
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        compress_image_field(self.customer_photo, max_px=500, quality=85)
+        compress_image_field(self.id_proof_photo_front, max_px=1400, quality=92)
+        compress_image_field(self.id_proof_photo_back, max_px=1400, quality=92)
+        compress_image_field(self.driving_license_photo, max_px=1400, quality=92)
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["-created_at"]
