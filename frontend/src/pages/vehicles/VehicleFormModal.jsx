@@ -122,7 +122,7 @@ export default function VehicleFormModal({ open, onClose, vehicle, owners, onSav
           <Input label="Color" value={form.color} onChange={(e) => update('color', e.target.value)} placeholder="White" />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input label="Seating Capacity" type="number" value={form.seating_capacity}
             onChange={(e) => update('seating_capacity', e.target.value)} />
           <Select label="Fuel Type" options={FUEL_OPTIONS} value={form.fuel_type} onChange={(e) => update('fuel_type', e.target.value)} />

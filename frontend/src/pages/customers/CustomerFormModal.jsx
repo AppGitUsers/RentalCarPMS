@@ -117,19 +117,23 @@ export default function CustomerFormModal({ open, onClose, customer, onSaved }) 
         <Input label="Driving License Number" value={form.driving_license_number}
           onChange={(e) => update('driving_license_number', e.target.value)} placeholder="Required to drive the rented vehicle" />
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <PhotoUpload label="Customer Photo" round
-            existingUrl={customer?.customer_photo}
-            onChange={(file) => setFiles((f) => ({ ...f, customer_photo: file }))} />
-          <PhotoUpload label="ID Proof (Front)"
-            existingUrl={customer?.id_proof_photo_front}
-            onChange={(file) => setFiles((f) => ({ ...f, id_proof_photo_front: file }))} />
-          <PhotoUpload label="ID Proof (Back)"
-            existingUrl={customer?.id_proof_photo_back}
-            onChange={(file) => setFiles((f) => ({ ...f, id_proof_photo_back: file }))} />
-          <PhotoUpload label="Driving License"
-            existingUrl={customer?.driving_license_photo}
-            onChange={(file) => setFiles((f) => ({ ...f, driving_license_photo: file }))} />
+        <div className="flex flex-col sm:flex-row gap-4 items-start">
+          <div className="self-center sm:self-start">
+            <PhotoUpload label="Customer Photo" round
+              existingUrl={customer?.customer_photo}
+              onChange={(file) => setFiles((f) => ({ ...f, customer_photo: file }))} />
+          </div>
+          <div className="grid grid-cols-3 gap-3 flex-1">
+            <PhotoUpload label="ID Proof (Front)"
+              existingUrl={customer?.id_proof_photo_front}
+              onChange={(file) => setFiles((f) => ({ ...f, id_proof_photo_front: file }))} />
+            <PhotoUpload label="ID Proof (Back)"
+              existingUrl={customer?.id_proof_photo_back}
+              onChange={(file) => setFiles((f) => ({ ...f, id_proof_photo_back: file }))} />
+            <PhotoUpload label="Driving License"
+              existingUrl={customer?.driving_license_photo}
+              onChange={(file) => setFiles((f) => ({ ...f, driving_license_photo: file }))} />
+          </div>
         </div>
 
         <TextArea label="Notes" value={form.notes} onChange={(e) => update('notes', e.target.value)} rows={2} />

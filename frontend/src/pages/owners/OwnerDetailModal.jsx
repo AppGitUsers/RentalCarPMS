@@ -182,11 +182,11 @@ export default function OwnerDetailModal({ open, onClose, owner, onPayoutComplet
                   ))}
                 </div>
                 {selectedRentalIds.length > 0 && (
-                  <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-amber-50 border border-amber-100 rounded-lg px-4 py-3">
                     <p className="text-sm font-medium text-amber-700">
                       {selectedRentalIds.length} selected · {formatCurrency(collectiveTotal, symbol)} total
                     </p>
-                    <Button variant="amber" size="sm" onClick={() => setPayoutMode('collective')}>Pay Selected (Collective)</Button>
+                    <Button variant="amber" size="sm" onClick={() => setPayoutMode('collective')}>Pay Collectively</Button>
                   </div>
                 )}
               </>

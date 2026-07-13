@@ -95,9 +95,9 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
       }
     >
       <div className="space-y-5">
-        <div className="flex gap-4">
-          <PhotoUpload round existingUrl={staff?.photo} onChange={setPhotoFile} className="flex-shrink-0" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <PhotoUpload round existingUrl={staff?.photo} onChange={setPhotoFile} className="flex-shrink-0 self-center sm:self-start" />
+          <div className="grid grid-cols-2 gap-4 flex-1">
             <Input label="Full Name" required value={form.full_name} error={errors.full_name}
               onChange={(e) => update('full_name', e.target.value)} />
             <Input label="Phone Number" value={form.phone}

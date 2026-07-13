@@ -34,8 +34,13 @@ export default function Modal({ open, onClose, title, subtitle, children, size =
           'sm:' + SIZES[size],
         )}
       >
+        {/* Drag handle — mobile only */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
+          <div className="w-10 h-1 rounded-full bg-navy-200" />
+        </div>
+
         {title && (
-          <div className="flex items-start justify-between px-5 sm:px-6 py-4 border-b border-navy-100 flex-shrink-0">
+          <div className="flex items-start justify-between px-5 sm:px-6 py-3 sm:py-4 border-b border-navy-100 flex-shrink-0">
             <div>
               <h2 className="text-base font-semibold text-navy-900">{title}</h2>
               {subtitle && <p className="text-sm text-navy-400 mt-0.5">{subtitle}</p>}
