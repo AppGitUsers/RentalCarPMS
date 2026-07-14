@@ -78,14 +78,21 @@ export default function CustomerFormModal({ open, onClose, customer, onSaved }) 
       onSaved();
       onClose();
     } catch (err) {
-      const d = err.response?.data;
-      let msg = 'Could not save customer';
-      if (d) {
-        if (d.detail) {
+      console.error('[CustomerForm] save error:', err.message, 'status:', err.response?.status, 'data:', err.response?.data);
+      let msg;
+      if (!err.request) {
+        msg = 'Could not send request — try again';
+      } else if (!err.response) {
+        msg = 'No response from server — possible file size limit or network issue';
+      } else {
+        const d = err.response.data;
+        if (d?.detail) {
           msg = d.detail;
-        } else if (typeof d === 'object') {
+        } else if (d && typeof d === 'object') {
           const parts = Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`);
-          if (parts.length) msg = parts.join(' · ');
+          msg = parts.length ? parts.join(' · ') : `Server error ${err.response.status}`;
+        } else {
+          msg = `Server error ${err.response.status}`;
         }
       }
       showToast(msg, 'error');

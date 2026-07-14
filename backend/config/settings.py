@@ -207,7 +207,7 @@ LOGGING = {
         'finance':   {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
         'core':      {'handlers': ['console'], 'level': 'INFO', 'propagate': False},
         'django':         {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
-        'django.request': {'handlers': ['console'], 'level': 'ERROR',   'propagate': False},
+        'django.request': {'handlers': ['console'], 'level': 'WARNING', 'propagate': False},
     },
     'root': {
         'handlers': ['console'],
