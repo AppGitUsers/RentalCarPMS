@@ -11,18 +11,12 @@ export async function getVehicle(id) {
 }
 
 export async function createVehicle(data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.post('/vehicles/', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.post('/vehicles/', data);
   return resp.data;
 }
 
 export async function updateVehicle(id, data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.patch(`/vehicles/${id}/`, data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.patch(`/vehicles/${id}/`, data);
   return resp.data;
 }
 
@@ -49,9 +43,7 @@ export async function uploadVehicleGalleryImage(id, file, caption = '') {
   const formData = new FormData();
   formData.append('image', file);
   formData.append('caption', caption);
-  const resp = await client.post(`/vehicles/${id}/upload_gallery_image/`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
+  const resp = await client.post(`/vehicles/${id}/upload_gallery_image/`, formData);
   return resp.data;
 }
 

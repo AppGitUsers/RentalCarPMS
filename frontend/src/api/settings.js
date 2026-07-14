@@ -6,9 +6,6 @@ export async function getSettings() {
 }
 
 export async function updateSettings(data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.patch('/settings/', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.patch('/settings/', data);
   return resp.data;
 }

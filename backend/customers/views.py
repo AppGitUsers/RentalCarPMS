@@ -29,10 +29,12 @@ class CustomerViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         logger.info(
-            "Customer create attempt — fields: %s | files: %s",
-            list(request.data.keys()), list(request.FILES.keys()),
+            "Customer create attempt — content_type: %s",
+            request.content_type,
         )
         serializer = self.get_serializer(data=request.data)
+        logger.info("Customer create — body parsed | fields: %s | files: %s",
+                    list(request.data.keys()), list(request.FILES.keys()))
         if not serializer.is_valid():
             logger.error(
                 "Customer create validation failed — errors: %s | files: %s",
@@ -50,8 +52,8 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         logger.info(
-            "Customer update attempt — pk: %s | files: %s",
-            kwargs.get('pk') or self.kwargs.get('pk'), list(request.FILES.keys()),
+            "Customer update attempt — pk: %s | content_type: %s",
+            kwargs.get('pk') or self.kwargs.get('pk'), request.content_type,
         )
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)

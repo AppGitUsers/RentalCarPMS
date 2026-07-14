@@ -11,18 +11,12 @@ export async function getCustomer(id) {
 }
 
 export async function createCustomer(data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.post('/customers/', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.post('/customers/', data);
   return resp.data;
 }
 
 export async function updateCustomer(id, data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.patch(`/customers/${id}/`, data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.patch(`/customers/${id}/`, data);
   return resp.data;
 }
 

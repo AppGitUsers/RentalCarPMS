@@ -11,18 +11,12 @@ export async function getStaffMember(id) {
 }
 
 export async function createStaffMember(data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.post('/staff/members/', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.post('/staff/members/', data);
   return resp.data;
 }
 
 export async function updateStaffMember(id, data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.patch(`/staff/members/${id}/`, data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.patch(`/staff/members/${id}/`, data);
   return resp.data;
 }
 

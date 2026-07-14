@@ -11,18 +11,12 @@ export async function getOwner(id) {
 }
 
 export async function createOwner(data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.post('/owners/', data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.post('/owners/', data);
   return resp.data;
 }
 
 export async function updateOwner(id, data) {
-  const isFormData = data instanceof FormData;
-  const resp = await client.patch(`/owners/${id}/`, data, {
-    headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
-  });
+  const resp = await client.patch(`/owners/${id}/`, data);
   return resp.data;
 }
 
