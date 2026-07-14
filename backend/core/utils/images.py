@@ -50,4 +50,11 @@ def compress_image_field(field, max_px, quality=85):
             original_kb, compressed_kb, quality, max_px,
         )
     except Exception as exc:
-        logger.warning("Image compression failed for %s: %s", original_name, exc)
+        logger.error(
+            "Image compression failed for %s: %s — original will be saved uncompressed",
+            original_name, exc, exc_info=True,
+        )
+        try:
+            field.file.seek(0)
+        except Exception:
+            pass

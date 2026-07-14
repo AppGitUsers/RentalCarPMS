@@ -73,7 +73,17 @@ export default function CustomerFormModal({ open, onClose, customer, onSaved }) 
       onSaved();
       onClose();
     } catch (err) {
-      showToast(err.response?.data?.detail || 'Could not save customer', 'error');
+      const d = err.response?.data;
+      let msg = 'Could not save customer';
+      if (d) {
+        if (d.detail) {
+          msg = d.detail;
+        } else if (typeof d === 'object') {
+          const parts = Object.entries(d).map(([k, v]) => `${k}: ${Array.isArray(v) ? v[0] : v}`);
+          if (parts.length) msg = parts.join(' · ');
+        }
+      }
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }
