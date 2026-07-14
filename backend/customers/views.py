@@ -33,8 +33,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
             request.content_type,
         )
         serializer = self.get_serializer(data=request.data)
-        logger.info("Customer create — body parsed | fields: %s | files: %s",
-                    list(request.data.keys()), list(request.FILES.keys()))
+        logger.info(
+            "Customer create — body parsed | fields: %s | files: %s",
+            list(request.data.keys()),
+            {k: f"{f.name} {f.size}b {f.content_type}" for k, f in request.FILES.items()},
+        )
         if not serializer.is_valid():
             logger.error(
                 "Customer create validation failed — errors: %s | files: %s",
@@ -57,6 +60,11 @@ class CustomerViewSet(viewsets.ModelViewSet):
         )
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        logger.info(
+            "Customer update — body parsed | fields: %s | files: %s",
+            list(request.data.keys()),
+            {k: f"{f.name} {f.size}b {f.content_type}" for k, f in request.FILES.items()},
+        )
         if not serializer.is_valid():
             logger.error(
                 "Customer update validation failed — pk: %s | errors: %s | files: %s",

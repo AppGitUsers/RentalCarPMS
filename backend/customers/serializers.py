@@ -1,10 +1,16 @@
 from rest_framework import serializers
 
+from core.utils.fields import LenientImageField
+
 from .models import Customer
 
 
 class CustomerSerializer(serializers.ModelSerializer):
     rental_count = serializers.SerializerMethodField()
+    customer_photo = LenientImageField(required=False, allow_null=True)
+    id_proof_photo_front = LenientImageField(required=False, allow_null=True)
+    id_proof_photo_back = LenientImageField(required=False, allow_null=True)
+    driving_license_photo = LenientImageField(required=False, allow_null=True)
 
     class Meta:
         model = Customer

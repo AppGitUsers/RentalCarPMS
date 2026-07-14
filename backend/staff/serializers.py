@@ -1,10 +1,13 @@
 from rest_framework import serializers
 
+from core.utils.fields import LenientImageField
+
 from .models import StaffAttendance, StaffMember, StaffPayment
 
 
 class StaffMemberSerializer(serializers.ModelSerializer):
     is_active = serializers.BooleanField(default=True, required=False)
+    photo = LenientImageField(required=False, allow_null=True)
 
     class Meta:
         model = StaffMember

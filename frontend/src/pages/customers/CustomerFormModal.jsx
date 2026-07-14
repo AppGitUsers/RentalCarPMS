@@ -59,9 +59,14 @@ export default function CustomerFormModal({ open, onClose, customer, onSaved }) 
     try {
       const formData = new FormData();
       Object.entries(form).forEach(([k, v]) => formData.append(k, v ?? ''));
+      const fileDebug = {};
       Object.entries(files).forEach(([k, file]) => {
-        if (file) formData.append(k, file);
+        if (file) {
+          formData.append(k, file);
+          fileDebug[k] = `${file.name} | ${file.type || '(no type)'} | ${file.size}b`;
+        }
       });
+      console.log('[CustomerForm] submitting files:', fileDebug);
 
       if (customer) {
         await customersApi.updateCustomer(customer.id, formData);

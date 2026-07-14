@@ -1,11 +1,14 @@
 from rest_framework import serializers
 
+from core.utils.fields import LenientImageField
 from owners.models import CarOwner
 
 from .models import Vehicle, VehicleImage, VehicleOwnerRate
 
 
 class VehicleImageSerializer(serializers.ModelSerializer):
+    image = LenientImageField()
+
     class Meta:
         model = VehicleImage
         fields = ['id', 'image', 'caption', 'uploaded_at']
@@ -33,6 +36,7 @@ class VehicleSerializer(serializers.ModelSerializer):
     active_rental = serializers.SerializerMethodField()
     is_active = serializers.BooleanField(default=True, required=False)
     owner_rate = VehicleOwnerRateSerializer(read_only=True)
+    primary_photo = LenientImageField(required=False, allow_null=True)
 
     class Meta:
         model = Vehicle
