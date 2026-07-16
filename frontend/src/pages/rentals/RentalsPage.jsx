@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Search, CarFront, Clock3, CalendarRange, X } from 'lucide-react';
+import { Plus, Search, CarFront, Clock3, CalendarRange, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
 import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
@@ -37,6 +37,9 @@ export default function RentalsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [upcomingCount, setUpcomingCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [hasNext, setHasNext] = useState(false);
+  const [hasPrev, setHasPrev] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('');
   const [search, setSearch] = useState('');
@@ -51,32 +54,48 @@ export default function RentalsPage() {
 
   const hasDateFilters = startFrom || startTo || endFrom || endTo;
 
-  const clearDateFilters = () => { setStartFrom(''); setStartTo(''); setEndFrom(''); setEndTo(''); };
+  const clearDateFilters = () => {
+    setStartFrom(''); setStartTo(''); setEndFrom(''); setEndTo(''); setPage(1);
+  };
 
-  const load = useCallback(() => {
-    setLoading(true);
+  const loadStatic = useCallback(() => {
     const today = new Date().toISOString().split('T')[0];
-    Promise.all([
+    return Promise.all([
       rentalsApi.getActiveRentals(),
       rentalsApi.listRentals({ status: 'booked', scheduled_start_after: today, page_size: 1 }),
-      rentalsApi.listRentals({
-        search: debouncedSearch || undefined,
-        status: statusFilter || undefined,
-        payment_status: paymentFilter || undefined,
-        scheduled_start_after:  startFrom || undefined,
-        scheduled_start_before: startTo   || undefined,
-        scheduled_end_after:    endFrom   || undefined,
-        scheduled_end_before:   endTo     || undefined,
-      }),
-    ]).then(([active, upcoming, data]) => {
+    ]).then(([active, upcoming]) => {
       setActiveRentals(active);
       setUpcomingCount(upcoming.count || 0);
+    });
+  }, []);
+
+  const loadList = useCallback(() => {
+    setLoading(true);
+    return rentalsApi.listRentals({
+      page: page > 1 ? page : undefined,
+      search: debouncedSearch || undefined,
+      status: statusFilter || undefined,
+      payment_status: paymentFilter || undefined,
+      scheduled_start_after:  startFrom || undefined,
+      scheduled_start_before: startTo   || undefined,
+      scheduled_end_after:    endFrom   || undefined,
+      scheduled_end_before:   endTo     || undefined,
+    }).then((data) => {
       setRentals(data.results || data);
       setTotalCount(data.count ?? (data.results || data).length);
+      setHasNext(!!data.next);
+      setHasPrev(!!data.previous);
     }).finally(() => setLoading(false));
-  }, [debouncedSearch, statusFilter, paymentFilter, startFrom, startTo, endFrom, endTo]);
+  }, [page, debouncedSearch, statusFilter, paymentFilter, startFrom, startTo, endFrom, endTo]);
 
-  useEffect(() => { load(); }, [load]);
+  const load = useCallback(() => {
+    return Promise.all([loadStatic(), loadList()]);
+  }, [loadStatic, loadList]);
+
+  useEffect(() => { loadStatic(); }, [loadStatic]);
+  useEffect(() => { loadList(); }, [loadList]);
+
+  const totalPages = totalCount > 0 ? Math.ceil(totalCount / 25) : 1;
 
   return (
     <div>
@@ -92,11 +111,6 @@ export default function RentalsPage() {
           <StatCard icon={Clock3} tone="navy" label="Upcoming Bookings" value={upcomingCount} />
           <StatCard icon={CalendarRange} tone="success" label="Total Bookings" value={totalCount} />
         </div>
-        {!hasDateFilters && (
-          <p className="text-xs text-navy-400 -mt-3">
-            Booking list shows the last 30 days. Use date filters above to search beyond this range.
-          </p>
-        )}
 
         {activeRentals.length > 0 && (
           <Card>
@@ -117,7 +131,7 @@ export default function RentalsPage() {
               {STATUS_TABS.map((t) => (
                 <button
                   key={t.key}
-                  onClick={() => setStatusFilter(t.key)}
+                  onClick={() => { setStatusFilter(t.key); setPage(1); }}
                   className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
                     statusFilter === t.key ? 'bg-navy-800 text-white' : 'bg-white text-navy-500 border border-navy-200 hover:bg-navy-50'
                   }`}
@@ -127,7 +141,12 @@ export default function RentalsPage() {
               ))}
             </div>
             <div className="w-full sm:w-72">
-              <Input icon={Search} placeholder="Search customer, phone, registration..." value={search} onChange={(e) => setSearch(e.target.value)} />
+              <Input
+                icon={Search}
+                placeholder="Search customer, phone, registration..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              />
             </div>
           </div>
 
@@ -136,7 +155,7 @@ export default function RentalsPage() {
             {PAYMENT_TABS.map((t) => (
               <button
                 key={t.key}
-                onClick={() => setPaymentFilter(t.key)}
+                onClick={() => { setPaymentFilter(t.key); setPage(1); }}
                 className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                   paymentFilter === t.key
                     ? t.key === 'paid'      ? 'bg-success-500 text-white'
@@ -159,12 +178,14 @@ export default function RentalsPage() {
                 <span className="text-xs text-navy-400 font-medium">Pickup:</span>
               </div>
               <input
-                type="date" value={startFrom} onChange={(e) => setStartFrom(e.target.value)}
+                type="date" value={startFrom}
+                onChange={(e) => { setStartFrom(e.target.value); setPage(1); }}
                 className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
               <span className="text-xs text-navy-400">to</span>
               <input
-                type="date" value={startTo} onChange={(e) => setStartTo(e.target.value)}
+                type="date" value={startTo}
+                onChange={(e) => { setStartTo(e.target.value); setPage(1); }}
                 className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
             </div>
@@ -175,12 +196,14 @@ export default function RentalsPage() {
                 <span className="text-xs text-navy-400 font-medium">Return:</span>
               </div>
               <input
-                type="date" value={endFrom} onChange={(e) => setEndFrom(e.target.value)}
+                type="date" value={endFrom}
+                onChange={(e) => { setEndFrom(e.target.value); setPage(1); }}
                 className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
               <span className="text-xs text-navy-400">to</span>
               <input
-                type="date" value={endTo} onChange={(e) => setEndTo(e.target.value)}
+                type="date" value={endTo}
+                onChange={(e) => { setEndTo(e.target.value); setPage(1); }}
                 className="text-xs border border-navy-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-navy-300 bg-white w-36"
               />
             </div>
@@ -206,11 +229,39 @@ export default function RentalsPage() {
             action={<Button icon={Plus} onClick={() => setWizardOpen(true)}>New Booking</Button>}
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {rentals.map((r) => (
-              <RentalCard key={r.id} rental={r} symbol={symbol} onClick={() => setDetailRentalId(r.id)} />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {rentals.map((r) => (
+                <RentalCard key={r.id} rental={r} symbol={symbol} onClick={() => setDetailRentalId(r.id)} />
+              ))}
+            </div>
+
+            {(hasPrev || hasNext) && (
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-sm text-navy-400">
+                  Page {page} of {totalPages}
+                  <span className="ml-2 text-navy-300">·</span>
+                  <span className="ml-2">{totalCount} total</span>
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={!hasPrev}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-navy-200 text-sm font-medium text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Previous
+                  </button>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!hasNext}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-navy-200 text-sm font-medium text-navy-600 hover:bg-navy-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 

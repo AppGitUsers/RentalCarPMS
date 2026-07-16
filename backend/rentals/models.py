@@ -111,6 +111,12 @@ class Rental(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["payment_status", "created_at"]),
+            models.Index(fields=["scheduled_start"]),
+            models.Index(fields=["scheduled_end"]),
+        ]
 
     def __str__(self):
         return f"Rental #{self.id} - {self.customer.full_name} - {self.vehicle.registration_number}"
