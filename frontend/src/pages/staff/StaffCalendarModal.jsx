@@ -26,6 +26,7 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
   const [loadingData, setLoadingData] = useState(false);
   const [togglingDay, setTogglingDay] = useState(null);
 
+  const [authLeaveMode, setAuthLeaveMode] = useState(false);
   const [showDeliveryBreakdown, setShowDeliveryBreakdown] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
   const [payAmount, setPayAmount] = useState('');
@@ -104,7 +105,7 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
     const dateStr = getDateStr(day);
     setTogglingDay(dateStr);
     try {
-      const result = await staffApi.toggleAttendance(staff.id, dateStr);
+      const result = await staffApi.toggleAttendance(staff.id, dateStr, authLeaveMode ? 'auth_leave' : 'normal');
       setAttendance((prev) => {
         const next = { ...prev };
         if (result.status === null) delete next[dateStr];
@@ -162,6 +163,10 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
       cls += ' bg-red-100 text-red-700 cursor-pointer hover:bg-red-200';
     } else if (status === 'cl') {
       cls += ' bg-amber-100 text-amber-700 cursor-pointer hover:bg-amber-200';
+    } else if (status === 'auth_leave') {
+      cls += ' bg-blue-100 text-blue-700 cursor-pointer hover:bg-blue-200';
+    } else if (authLeaveMode) {
+      cls += ' bg-green-50 text-navy-700 cursor-pointer hover:bg-blue-50 ring-1 ring-blue-200';
     } else {
       cls += ' bg-green-50 text-navy-700 cursor-pointer hover:bg-green-100';
     }
@@ -268,10 +273,13 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
             )}
 
             <div className="flex items-center justify-between">
-              <div className="flex gap-3 text-xs">
+              <div className="flex gap-3 text-xs flex-wrap">
                 <span className="text-navy-500">Present: <strong>{summary.present_days}</strong></span>
                 <span className="text-red-500">Absent: <strong>{summary.absent_days}</strong></span>
                 <span className="text-amber-600">CL: <strong>{summary.cl_days}/2</strong></span>
+                {summary.auth_leave_days > 0 && (
+                  <span className="text-blue-600">Auth Leave: <strong>{summary.auth_leave_days}</strong></span>
+                )}
               </div>
               <button
                 onClick={() => {
@@ -307,19 +315,38 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
               >
                 {cells.map((day, i) => renderDayCell(day, i))}
               </div>
-              <div className="flex items-center justify-center gap-4 mt-3 text-xs text-navy-400">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 bg-green-100 border border-green-200 rounded inline-block" />
-                  Present
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 bg-amber-100 rounded inline-block" />
-                  CL
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-3 h-3 bg-red-100 rounded inline-block" />
-                  Absent
-                </span>
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-3 text-xs text-navy-400 flex-wrap">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-green-100 border border-green-200 rounded inline-block" />
+                    Present
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-amber-100 rounded inline-block" />
+                    CL
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-red-100 rounded inline-block" />
+                    Absent
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 bg-blue-100 rounded inline-block" />
+                    Auth Leave
+                  </span>
+                </div>
+                <label className={`flex items-center gap-2 text-xs font-medium cursor-pointer select-none px-2.5 py-1.5 rounded-lg border transition-colors ${
+                  authLeaveMode
+                    ? 'bg-blue-50 border-blue-300 text-blue-700'
+                    : 'border-navy-200 text-navy-500 hover:border-navy-300'
+                }`}>
+                  <input
+                    type="checkbox"
+                    checked={authLeaveMode}
+                    onChange={(e) => setAuthLeaveMode(e.target.checked)}
+                    className="rounded accent-blue-600"
+                  />
+                  Auth Leave Mode
+                </label>
               </div>
             </div>
           )}

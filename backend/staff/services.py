@@ -40,9 +40,10 @@ def salary_summary(staff, year: int, month: int):
     )
     absent_days = qs.filter(status='absent').count()
     cl_days = qs.filter(status='cl').count()
+    auth_leave_days = qs.filter(status='auth_leave').count()
     cl_available = max(0, CL_PER_MONTH - cl_days)
     deduction_days = absent_days
-    present_days = working_days - absent_days - cl_days
+    present_days = working_days - absent_days - cl_days - auth_leave_days
 
     per_day = Decimal(str(staff.monthly_salary)) / Decimal(str(total_days))
     calculated_amount = q2(
@@ -88,6 +89,7 @@ def salary_summary(staff, year: int, month: int):
         'present_days': present_days,
         'absent_days': absent_days,
         'cl_days': cl_days,
+        'auth_leave_days': auth_leave_days,
         'cl_available': cl_available,
         'deduction_days': deduction_days,
         'per_day': q2(per_day),

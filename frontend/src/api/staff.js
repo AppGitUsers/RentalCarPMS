@@ -38,8 +38,8 @@ export async function getAttendanceByStaffMonth(staffId, month, year) {
   return resp.data;
 }
 
-export async function toggleAttendance(staffId, date) {
-  const resp = await client.post('/staff/attendance/toggle/', { staff_id: staffId, date });
+export async function toggleAttendance(staffId, date, mode = 'normal') {
+  const resp = await client.post('/staff/attendance/toggle/', { staff_id: staffId, date, mode });
   return resp.data;
 }
 

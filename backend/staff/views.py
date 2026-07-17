@@ -123,26 +123,40 @@ class StaffAttendanceViewSet(viewsets.ViewSet):
         if not day:
             return Response({'detail': 'Invalid date format. Use YYYY-MM-DD.'}, status=400)
 
-        cl_used = StaffAttendance.objects.filter(
-            staff=staff,
-            date__year=day.year,
-            date__month=day.month,
-            status='cl',
-        ).count()
-        cl_available = max(0, CL_PER_MONTH - cl_used)
-
+        mode = request.data.get('mode', 'normal')
         record = StaffAttendance.objects.filter(staff=staff, date=day).first()
         current_status = record.status if record else None
-        new_status = next_attendance_status(current_status, cl_available)
 
-        if new_status is None:
-            if record:
+        if mode == 'auth_leave':
+            if current_status == 'auth_leave':
                 record.delete()
-        elif record:
-            record.status = new_status
-            record.save(update_fields=['status'])
+                new_status = None
+            elif record:
+                record.status = 'auth_leave'
+                record.save(update_fields=['status'])
+                new_status = 'auth_leave'
+            else:
+                StaffAttendance.objects.create(staff=staff, date=day, status='auth_leave')
+                new_status = 'auth_leave'
         else:
-            StaffAttendance.objects.create(staff=staff, date=day, status=new_status)
+            cl_used = StaffAttendance.objects.filter(
+                staff=staff,
+                date__year=day.year,
+                date__month=day.month,
+                status='cl',
+            ).count()
+            cl_available = max(0, CL_PER_MONTH - cl_used)
+            effective_status = current_status if current_status != 'auth_leave' else None
+            new_status = next_attendance_status(effective_status, cl_available)
+
+            if new_status is None:
+                if record:
+                    record.delete()
+            elif record:
+                record.status = new_status
+                record.save(update_fields=['status'])
+            else:
+                StaffAttendance.objects.create(staff=staff, date=day, status=new_status)
 
         logger.info(
             "Attendance toggled — %s on %s: %s → %s",

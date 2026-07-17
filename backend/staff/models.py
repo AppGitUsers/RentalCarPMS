@@ -58,6 +58,7 @@ class StaffAttendance(models.Model):
     STATUS_CHOICES = [
         ('absent', 'Absent'),
         ('cl', 'Casual Leave'),
+        ('auth_leave', 'Authorized Leave'),
     ]
     staff = models.ForeignKey(StaffMember, on_delete=models.CASCADE, related_name='attendance_records')
     date = models.DateField()
