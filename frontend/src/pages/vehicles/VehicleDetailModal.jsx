@@ -54,13 +54,13 @@ export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
             </div>
             <div className="text-right">
               <p className="text-xs text-navy-400">Owner Share</p>
-              <p className="text-base font-semibold text-navy-900">{vehicle.effective_owner_share_percent}%</p>
+              <p className="text-base font-semibold text-navy-900">₹ {vehicle.owner_rate.owner_daily_amount}</p>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <PricingMini label="Daily Rate" value={formatCurrency(vehicle.daily_rate, symbol)} />
+          <PricingMini label="Daily Rate" value={formatCurrency(vehicle.owner_rate.vehicle_daily_rate, symbol)} />
           <PricingMini label="Insurance Expiry" value={vehicle.insurance_expiry || 'Not set'} icon={Calendar} />
           <PricingMini label="Permit Expiry" value={vehicle.permit_expiry || 'Not set'} icon={Calendar} />
         </div>
