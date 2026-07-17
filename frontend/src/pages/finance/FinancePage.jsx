@@ -143,7 +143,7 @@ export default function FinancePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard icon={TrendingUp} tone="success" label="Total Income" value={formatCurrency(summary.income.total_income, symbol)} sublabel="Collected (incl. custom income)" />
           <StatCard icon={TrendingDown} tone="danger" label="Total Expense" value={formatCurrency(summary.expense.total_expense, symbol)} sublabel="Payouts + salary + custom" />
           <StatCard icon={PiggyBank} tone="amber" label="Net Savings" value={formatCurrency(summary.savings, symbol)} sublabel="Income minus expense" />

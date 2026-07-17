@@ -13,9 +13,9 @@ export default function StatCard({ icon: Icon, label, value, sublabel, tone = 'n
       <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0', TONES[tone])}>
         <Icon className="w-5 h-5" />
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 overflow-hidden">
         <p className="text-xs font-medium text-navy-400">{label}</p>
-        <p className="text-2xl font-semibold text-navy-900 mt-0.5 tabular-nums truncate">{value}</p>
+        <p className="text-xl sm:text-2xl xl:text-lg font-semibold text-navy-900 mt-0.5 tabular-nums leading-tight">{value}</p>
         {sublabel && <p className="text-xs text-navy-400 mt-1">{sublabel}</p>}
         {trend && <p className={cn('text-xs font-medium mt-1', trend.positive ? 'text-success-600' : 'text-danger-500')}>{trend.label}</p>}
       </div>
