@@ -40,6 +40,8 @@ export default function OwnerFormModal({ open, onClose, owner, onSaved }) {
     const newErrors = {};
     if (!form.name.trim()) newErrors.name = 'Required';
     if (!form.phone.trim()) newErrors.phone = 'Required';
+    else if (form.phone.length !== 10) newErrors.phone = 'Must be exactly 10 digits';
+    if (form.alternate_phone && form.alternate_phone.length !== 10) newErrors.alternate_phone = 'Must be exactly 10 digits';
     if (Object.keys(newErrors).length) {
       setErrors(newErrors);
       return;
@@ -86,11 +88,15 @@ export default function OwnerFormModal({ open, onClose, owner, onSaved }) {
           <Input label="Owner Name" required value={form.name} error={errors.name}
             onChange={(e) => update('name', e.target.value)} placeholder="Full name" />
           <Input label="Phone Number" required value={form.phone} error={errors.phone}
-            onChange={(e) => update('phone', e.target.value)} placeholder="10-digit mobile number" />
+            inputMode="numeric" maxLength={10}
+            onChange={(e) => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="10-digit mobile number" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input label="Alternate Phone" value={form.alternate_phone}
-            onChange={(e) => update('alternate_phone', e.target.value)} placeholder="Optional" />
+          <Input label="Alternate Phone" value={form.alternate_phone} error={errors.alternate_phone}
+            inputMode="numeric" maxLength={10}
+            onChange={(e) => update('alternate_phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+            placeholder="Optional" />
           <Input label="Email" type="email" value={form.email}
             onChange={(e) => update('email', e.target.value)} placeholder="Optional" />
         </div>

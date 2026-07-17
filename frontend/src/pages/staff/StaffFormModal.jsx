@@ -55,6 +55,7 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
   const handleSubmit = async () => {
     const errs = {};
     if (!form.full_name.trim()) errs.full_name = 'Required';
+    if (form.phone && form.phone.length !== 10) errs.phone = 'Must be exactly 10 digits';
     if (!form.monthly_salary) errs.monthly_salary = 'Required';
     if (!form.date_joined) errs.date_joined = 'Required';
     if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -100,8 +101,9 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
           <div className="grid grid-cols-2 gap-4 flex-1">
             <Input label="Full Name" required value={form.full_name} error={errors.full_name}
               onChange={(e) => update('full_name', e.target.value)} />
-            <Input label="Phone Number" value={form.phone}
-              onChange={(e) => update('phone', e.target.value)} />
+            <Input label="Phone Number" value={form.phone} error={errors.phone}
+              inputMode="numeric" maxLength={10}
+              onChange={(e) => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} />
             <Select label="Role" options={ROLE_OPTIONS} value={form.role}
               onChange={(e) => update('role', e.target.value)} />
             <Input label="Date Joined" type="date" required value={form.date_joined} error={errors.date_joined}
