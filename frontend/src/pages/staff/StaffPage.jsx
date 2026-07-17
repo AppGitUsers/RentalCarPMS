@@ -94,6 +94,9 @@ export default function StaffPage() {
                       <Badge variant="neutral" className="capitalize">
                         {s.role.replace('_', ' ')}
                       </Badge>
+                      <Badge variant={s.employment_type === 'temporary' ? 'partial' : 'paid'} className="capitalize">
+                        {s.employment_type || 'Permanent'}
+                      </Badge>
                       {!s.is_active && <Badge variant="inactive">Inactive</Badge>}
                     </div>
                   </div>

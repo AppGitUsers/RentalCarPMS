@@ -20,11 +20,19 @@ ROLE_CHOICES = [
     ('other', 'Other'),
 ]
 
+EMPLOYMENT_TYPE_CHOICES = [
+    ('permanent', 'Permanent'),
+    ('temporary', 'Temporary'),
+]
+
 
 class StaffMember(models.Model):
     full_name = models.CharField(max_length=150)
     phone = models.CharField(max_length=20, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='other')
+    employment_type = models.CharField(
+        max_length=10, choices=EMPLOYMENT_TYPE_CHOICES, default='permanent',
+    )
     photo = models.ImageField(upload_to='staff/photos/', blank=True, null=True)
     monthly_salary = models.DecimalField(max_digits=10, decimal_places=2)
     date_joined = models.DateField()

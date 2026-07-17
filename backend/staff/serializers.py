@@ -12,7 +12,7 @@ class StaffMemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffMember
         fields = [
-            'id', 'full_name', 'phone', 'role', 'photo', 'monthly_salary',
+            'id', 'full_name', 'phone', 'role', 'employment_type', 'photo', 'monthly_salary',
             'date_joined', 'is_active', 'address', 'id_proof_number', 'notes',
             'created_at', 'updated_at',
         ]
@@ -22,7 +22,7 @@ class StaffMemberSerializer(serializers.ModelSerializer):
 class StaffMemberListSerializer(serializers.ModelSerializer):
     class Meta:
         model = StaffMember
-        fields = ['id', 'full_name', 'phone', 'role', 'photo', 'monthly_salary', 'date_joined', 'is_active']
+        fields = ['id', 'full_name', 'phone', 'role', 'employment_type', 'photo', 'monthly_salary', 'date_joined', 'is_active']
 
 
 class StaffAttendanceSerializer(serializers.ModelSerializer):

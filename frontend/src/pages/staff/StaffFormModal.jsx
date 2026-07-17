@@ -18,8 +18,13 @@ const ROLE_OPTIONS = [
   { value: 'other', label: 'Other' },
 ];
 
+const EMPLOYMENT_TYPE_OPTIONS = [
+  { value: 'permanent', label: 'Permanent' },
+  { value: 'temporary', label: 'Temporary' },
+];
+
 const EMPTY_FORM = {
-  full_name: '', phone: '', role: 'driver', monthly_salary: '',
+  full_name: '', phone: '', role: 'driver', employment_type: 'permanent', monthly_salary: '',
   date_joined: '', is_active: true, address: '', id_proof_number: '', notes: '',
 };
 
@@ -36,6 +41,7 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
         full_name: staff.full_name || '',
         phone: staff.phone || '',
         role: staff.role || 'driver',
+        employment_type: staff.employment_type || 'permanent',
         monthly_salary: staff.monthly_salary || '',
         date_joined: staff.date_joined || '',
         is_active: staff.is_active !== false,
@@ -106,6 +112,8 @@ export default function StaffFormModal({ open, onClose, staff, onSaved }) {
               onChange={(e) => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} />
             <Select label="Role" options={ROLE_OPTIONS} value={form.role}
               onChange={(e) => update('role', e.target.value)} />
+            <Select label="Employment Type" options={EMPLOYMENT_TYPE_OPTIONS} value={form.employment_type}
+              onChange={(e) => update('employment_type', e.target.value)} />
             <Input label="Date Joined" type="date" required value={form.date_joined} error={errors.date_joined}
               onChange={(e) => update('date_joined', e.target.value)} />
           </div>
