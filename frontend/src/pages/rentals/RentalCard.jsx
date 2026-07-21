@@ -56,6 +56,9 @@ export default function RentalCard({ rental, symbol, onClick }) {
         </div>
         <div className="flex flex-col items-end gap-1">
           <Badge variant={rental.status}>{rental.status}</Badge>
+          {rental.status === 'booked' && new Date(rental.scheduled_start) > new Date() && (
+            <Badge variant="partial" dot={false} className="text-[10px] px-2 py-0.5">Reserved</Badge>
+          )}
           <Badge variant={rental.payment_status} dot={false} className="text-[10px] px-2 py-0.5">{rental.payment_status}</Badge>
         </div>
       </div>

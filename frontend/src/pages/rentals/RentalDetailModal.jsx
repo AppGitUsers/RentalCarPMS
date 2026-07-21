@@ -198,6 +198,8 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
           extensionDays={extensionDays} setExtensionDays={setExtensionDays}
           extensionRate={extensionRate} setExtensionRate={setExtensionRate}
           freeKmPerDay={settings?.free_km_per_day || 0}
+          nextBooking={rental.next_booking}
+          bufferHours={settings?.booking_buffer_hours ?? 2}
           onCancel={() => setMode('view')} onConfirm={handleExtend} working={working}
         />
       ) : mode === 'pay' ? (
@@ -392,7 +394,7 @@ function InfoMini({ icon: Icon, label, value }) {
   );
 }
 
-function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extensionRate, setExtensionRate, freeKmPerDay, onCancel, onConfirm, working }) {
+function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extensionRate, setExtensionRate, freeKmPerDay, nextBooking, bufferHours, onCancel, onConfirm, working }) {
   const days = Number(extensionDays) || 0;
   const rate = Number(extensionRate) || Number(rental.daily_rate_snapshot);
   const additionalBase = rate * days;
@@ -402,12 +404,28 @@ function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extension
   const newFreeKm = rental.free_km_total_snapshot + (Number(freeKmPerDay) * days);
   const newEnd = days > 0 ? new Date(new Date(rental.scheduled_end).getTime() + days * 86400000) : null;
 
+  const nextBookingStart = nextBooking ? new Date(nextBooking.scheduled_start) : null;
+  const bufferMs = bufferHours * 3600000;
+  const maxDays = nextBookingStart
+    ? Math.max(0, Math.floor((nextBookingStart.getTime() - bufferMs - new Date(rental.scheduled_end).getTime()) / 86400000))
+    : undefined;
+
   return (
     <div className="space-y-4">
+      {nextBooking && (
+        <div className="flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 bg-navy-50 border border-navy-100">
+          <CalendarPlus className="w-4 h-4 flex-shrink-0 mt-0.5 text-navy-400" />
+          <p className="text-sm text-navy-600">
+            Next booking: <strong>{formatDateTime(nextBooking.scheduled_start)}</strong> ({nextBooking.customer_name})
+            {maxDays !== undefined && ` — max ${maxDays} day(s) extension allowed`}
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <Input
-          label="Extend by (days)" type="number" min="1"
+          label="Extend by (days)" type="number" min="1" max={maxDays}
           value={extensionDays} onChange={(e) => setExtensionDays(e.target.value)}
+          hint={maxDays !== undefined ? `Max ${maxDays} day(s)` : undefined}
         />
         <Input
           label="Rate per Day" type="number"

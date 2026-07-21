@@ -64,12 +64,16 @@ class VehicleSerializer(serializers.ModelSerializer):
 class VehicleListSerializer(serializers.ModelSerializer):
     owner_name = serializers.CharField(source='owner.name', read_only=True)
     vehicle_daily_rate = serializers.SerializerMethodField()
+    next_booking_start = serializers.SerializerMethodField()
+    next_booking_customer = serializers.SerializerMethodField()
+    future_bookings = serializers.SerializerMethodField()
 
     class Meta:
         model = Vehicle
         fields = [
             'id', 'registration_number', 'make', 'model', 'year', 'primary_photo',
             'vehicle_daily_rate', 'status', 'owner_name', 'current_odometer',
+            'next_booking_start', 'next_booking_customer', 'future_bookings',
         ]
 
     def get_vehicle_daily_rate(self, obj):
@@ -77,3 +81,19 @@ class VehicleListSerializer(serializers.ModelSerializer):
             return obj.owner_rate.vehicle_daily_rate
         except VehicleOwnerRate.DoesNotExist:
             return None
+
+    def get_next_booking_start(self, obj):
+        # Present when the queryset was annotated (vehicle list action); None otherwise.
+        return getattr(obj, 'next_booking_start', None)
+
+    def get_next_booking_customer(self, obj):
+        return getattr(obj, 'next_booking_customer', None)
+
+    def get_future_bookings(self, obj):
+        bookings = getattr(obj, 'future_bookings_prefetch', None)
+        if not bookings:
+            return []
+        return [
+            {'scheduled_start': b.scheduled_start, 'scheduled_end': b.scheduled_end}
+            for b in bookings
+        ]

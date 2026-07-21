@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Car, CalendarCheck, AlertTriangle, Wallet, TrendingUp, TrendingDown,
-  PiggyBank, Users, UserCircle2, ArrowRight, FileWarning,
+  PiggyBank, Users, ArrowRight, FileWarning, Clock,
 } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
 import StatCard from '../../components/common/StatCard';
@@ -11,7 +11,7 @@ import Badge from '../../components/ui/Badge';
 import { PageLoader, EmptyState } from '../../components/ui/Feedback';
 import { getDashboardOverview } from '../../api/dashboard';
 import { useSettings } from '../../context/SettingsContext';
-import { formatCurrency, formatDate } from '../../utils/format';
+import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -106,6 +106,38 @@ export default function DashboardPage() {
             />
           </div>
         </Card>
+
+        {/* Upcoming bookings */}
+        {data.upcoming_bookings?.length > 0 && (
+          <Card>
+            <CardHeader icon={Clock} title="Upcoming Reservations" subtitle="Future bookings — vehicle must be available at these times" />
+            <div className="space-y-2">
+              {data.upcoming_bookings.map((b) => (
+                <div
+                  key={b.id}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-lg border ${
+                    b.is_soon ? 'bg-amber-50/60 border-amber-100' : 'bg-white border-navy-100'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-navy-800 truncate">
+                      {b['vehicle__registration_number']} · {b['vehicle__make']} {b['vehicle__model']}
+                    </p>
+                    <p className="text-xs text-navy-400">{b['customer__full_name']} · {b.booked_days} day(s)</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                    {b.is_soon && (
+                      <Badge variant="pending" dot={false}>Due Soon</Badge>
+                    )}
+                    <span className="text-sm font-medium text-navy-600 tabular-nums whitespace-nowrap">
+                      {formatDateTime(b.scheduled_start)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Card className="lg:col-span-1">

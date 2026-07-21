@@ -116,6 +116,7 @@ class Rental(models.Model):
             models.Index(fields=["payment_status", "created_at"]),
             models.Index(fields=["scheduled_start"]),
             models.Index(fields=["scheduled_end"]),
+            models.Index(fields=["vehicle", "status", "scheduled_start"], name="rental_veh_status_start_idx"),
         ]
 
     def __str__(self):

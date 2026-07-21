@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, ChevronLeft, ChevronRight, UserPlus, Wallet, Car } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Input from '../../components/ui/Input';
@@ -12,7 +12,7 @@ import * as vehiclesApi from '../../api/vehicles';
 import * as rentalsApi from '../../api/rentals';
 import * as staffApi from '../../api/staff';
 import CustomerFormModal from '../customers/CustomerFormModal';
-import { formatCurrency, toDateTimeInputValue } from '../../utils/format';
+import { formatCurrency, formatDateTime, toDateTimeInputValue } from '../../utils/format';
 
 const STEPS = [
   { key: 'customer', label: 'Customer', icon: UserPlus },
@@ -39,10 +39,12 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const [customerSearching, setCustomerSearching] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [vehicles, setVehicles] = useState([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(false);
   const [staffList, setStaffList] = useState([]);
   const [customerFormOpen, setCustomerFormOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const debounceRef = useRef(null);
 
   const [form, setForm] = useState({
     customer_id: '', vehicle: '', destination: '', purpose: '',
@@ -53,11 +55,34 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     pickup_venue_other_location: '', pickup_venue_other_link: '', driver_delivery_charge: '0',
   });
 
+  const fetchVehicles = useCallback(async (from, to) => {
+    setVehiclesLoading(true);
+    try {
+      const params = { is_active: true, page_size: 500 };
+      if (from && to) {
+        params.available_from = new Date(from).toISOString();
+        params.available_to = new Date(to).toISOString();
+      }
+      const d = await vehiclesApi.listVehicles(params);
+      const list = d.results || d;
+      setVehicles(list);
+      // Clear selected vehicle if it's no longer in the available list
+      setForm((f) => {
+        if (f.vehicle && !list.find((v) => String(v.id) === String(f.vehicle))) {
+          return { ...f, vehicle: '', daily_rate: '' };
+        }
+        return f;
+      });
+    } finally {
+      setVehiclesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (open) {
       setCustomers([]);
       setSelectedCustomer(null);
-      vehiclesApi.listVehicles({ status: 'available', page_size: 500 }).then((d) => setVehicles(d.results || d));
+      fetchVehicles(form.scheduled_start, form.scheduled_end);
       staffApi.listStaff({ is_active: true }).then((d) => setStaffList(d.results || d)).catch(() => {});
       setStep(0);
       setErrors({});
@@ -87,6 +112,49 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
 
   const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
+  // Debounced re-fetch when dates change (skip on first open — handled by the open effect)
+  const isFirstOpen = useRef(true);
+  useEffect(() => {
+    if (!open) { isFirstOpen.current = true; return; }
+    if (isFirstOpen.current) { isFirstOpen.current = false; return; }
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      fetchVehicles(form.scheduled_start, form.scheduled_end);
+    }, 400);
+    return () => clearTimeout(debounceRef.current);
+  }, [form.scheduled_start, form.scheduled_end, open]);
+
+  const bufferMs = (settings?.booking_buffer_hours ?? 2) * 3600000;
+
+  // Dynamic max for end date: first booking that starts after selected start, minus buffer.
+  // Recomputes whenever start date or selected vehicle changes — handles multiple reservations.
+  const endMaxDatetime = useMemo(() => {
+    if (!selectedVehicle?.future_bookings?.length || !form.scheduled_start) return undefined;
+    const startMs = new Date(form.scheduled_start).getTime();
+    const next = selectedVehicle.future_bookings.find(
+      (b) => new Date(b.scheduled_start).getTime() > startMs
+    );
+    if (!next) return undefined;
+    return toDateTimeInputValue(new Date(new Date(next.scheduled_start).getTime() - bufferMs));
+  }, [selectedVehicle, form.scheduled_start, bufferMs]);
+
+  const getDateConflictError = (start, end) => {
+    if (!form.vehicle || !start || !end) return null;
+    const veh = vehicles.find((v) => String(v.id) === String(form.vehicle));
+    if (!veh?.future_bookings?.length) return null;
+    const startMs = new Date(start).getTime();
+    const endMs = new Date(end).getTime();
+    for (const b of veh.future_bookings) {
+      const bStart = new Date(b.scheduled_start).getTime();
+      const bEnd = new Date(b.scheduled_end).getTime();
+      if (bStart < endMs + bufferMs && bEnd > startMs - bufferMs) {
+        const maxEnd = new Date(bStart - bufferMs);
+        return `Must end by ${formatDateTime(maxEnd.toISOString())} — ${settings?.booking_buffer_hours ?? 2}h gap required before booking at ${formatDateTime(b.scheduled_start)}`;
+      }
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (form.scheduled_start && form.scheduled_end) {
       const start = new Date(form.scheduled_start);
@@ -105,7 +173,9 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const vehicleOptions = vehicles.map((v) => ({
     value: v.id,
     label: `${v.registration_number} — ${v.make} ${v.model}`,
-    sublabel: `${formatCurrency(v.vehicle_daily_rate, symbol)}/day`,
+    sublabel: v.next_booking_start
+      ? `${formatCurrency(v.vehicle_daily_rate, symbol)}/day · Reserved ${formatDateTime(v.next_booking_start)}`
+      : `${formatCurrency(v.vehicle_daily_rate, symbol)}/day`,
   }));
 
   const validateStep = () => {
@@ -116,6 +186,8 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
       if (!form.scheduled_start) e.scheduled_start = 'Required';
       if (!form.scheduled_end) e.scheduled_end = 'Required';
       if (!form.odometer_start) e.odometer_start = 'Required';
+      const conflictErr = getDateConflictError(form.scheduled_start, form.scheduled_end);
+      if (conflictErr) e.scheduled_end = conflictErr;
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -241,15 +313,32 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
                 setForm((f) => ({ ...f, vehicle: v, daily_rate: veh ? String(veh.vehicle_daily_rate) : '' }));
               }}
               placeholder="Search registration, make or model..."
-              emptyMessage="No available vehicles match your search"
+              emptyMessage="No vehicles available for the selected dates"
+              searching={vehiclesLoading}
             />
+            {selectedVehicle?.next_booking_start && (
+              <p className="text-xs text-amber-600">
+                Next reservation: <strong>{formatDateTime(selectedVehicle.next_booking_start)}</strong> — your rental must end at least {settings?.booking_buffer_hours ?? 2}h before this.
+              </p>
+            )}
             <Input label="Odometer at Pickup (km)" type="number" required value={form.odometer_start}
               error={errors.odometer_start} onChange={(e) => update('odometer_start', e.target.value)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Scheduled Start" type="datetime-local" required value={form.scheduled_start}
-                error={errors.scheduled_start} onChange={(e) => update('scheduled_start', e.target.value)} />
+                error={errors.scheduled_start}
+                onChange={(e) => {
+                  update('scheduled_start', e.target.value);
+                  const err = getDateConflictError(e.target.value, form.scheduled_end);
+                  setErrors((prev) => ({ ...prev, scheduled_start: undefined, scheduled_end: err || undefined }));
+                }} />
               <Input label="Scheduled End" type="datetime-local" required value={form.scheduled_end}
-                error={errors.scheduled_end} onChange={(e) => update('scheduled_end', e.target.value)} />
+                max={endMaxDatetime}
+                error={errors.scheduled_end}
+                onChange={(e) => {
+                  update('scheduled_end', e.target.value);
+                  const err = getDateConflictError(form.scheduled_start, e.target.value);
+                  setErrors((prev) => ({ ...prev, scheduled_end: err || undefined }));
+                }} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input label="Destination" value={form.destination} onChange={(e) => update('destination', e.target.value)} placeholder="e.g. Madurai" />

@@ -44,6 +44,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
     late_fee_type = serializers.CharField(read_only=True)
     computed_owner_payout = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     assigned_staff_name = serializers.SerializerMethodField()
+    next_booking = serializers.SerializerMethodField()
 
     class Meta:
         model = Rental
@@ -62,6 +63,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'payments', 'balance_due', 'live_estimate', 'km_covered', 'computed_owner_payout',
             'assigned_staff', 'assigned_staff_name', 'pickup_venue',
             'pickup_venue_other_location', 'pickup_venue_other_link', 'driver_delivery_charge',
+            'next_booking',
         ]
         read_only_fields = [
             'id', 'invoice_number', 'daily_rate_snapshot', 'gst_percent_snapshot',
@@ -73,6 +75,22 @@ class RentalDetailSerializer(serializers.ModelSerializer):
 
     def get_assigned_staff_name(self, obj):
         return obj.assigned_staff.full_name if obj.assigned_staff else None
+
+    def get_next_booking(self, obj):
+        """Nearest future booked rental for this vehicle after this rental's scheduled_end."""
+        from django.utils import timezone
+        nb = Rental.objects.filter(
+            vehicle=obj.vehicle,
+            status='booked',
+            scheduled_start__gt=obj.scheduled_end,
+        ).exclude(pk=obj.pk).order_by('scheduled_start').first()
+        if not nb:
+            return None
+        return {
+            'id': nb.id,
+            'scheduled_start': nb.scheduled_start,
+            'customer_name': nb.customer.full_name,
+        }
 
     def get_balance_due(self, obj):
         return obj.balance_due

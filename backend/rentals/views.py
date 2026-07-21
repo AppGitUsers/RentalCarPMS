@@ -44,9 +44,43 @@ class RentalViewSet(viewsets.ModelViewSet):
             return RentalCreateSerializer
         return RentalDetailSerializer
 
+    def _check_vehicle_booking_conflict(self, vehicle_id, scheduled_start, scheduled_end, exclude_rental_id=None):
+        """
+        Returns an error string if [scheduled_start, scheduled_end] (plus the configured
+        buffer on both sides) overlaps any existing booked/active rental for this vehicle.
+        Returns None when clear.
+        """
+        settings_obj = ApplicationSettings.load()
+        buffer = timezone.timedelta(hours=settings_obj.booking_buffer_hours)
+        qs = Rental.objects.filter(vehicle_id=vehicle_id, status__in=['booked', 'active'])
+        if exclude_rental_id:
+            qs = qs.exclude(pk=exclude_rental_id)
+        # Overlap with buffer: existing starts before new end+buffer AND existing ends after new start-buffer
+        conflict = qs.filter(
+            scheduled_start__lt=scheduled_end + buffer,
+            scheduled_end__gt=scheduled_start - buffer,
+        ).order_by('scheduled_start').first()
+        if not conflict:
+            return None
+        return (
+            f"Conflicts with an existing booking "
+            f"({conflict.scheduled_start.strftime('%d %b %Y %H:%M')} – "
+            f"{conflict.scheduled_end.strftime('%d %b %Y %H:%M')}). "
+            f"A {settings_obj.booking_buffer_hours}h gap is required between rentals."
+        )
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+
+        conflict_msg = self._check_vehicle_booking_conflict(
+            vehicle_id=serializer.validated_data['vehicle'].id,
+            scheduled_start=serializer.validated_data['scheduled_start'],
+            scheduled_end=serializer.validated_data['scheduled_end'],
+        )
+        if conflict_msg:
+            return Response({'detail': conflict_msg}, status=status.HTTP_400_BAD_REQUEST)
+
         rental = serializer.save()
         logger.info(
             "Rental #%s created — customer: %s, vehicle: %s, %s day(s), start: %s",
@@ -160,6 +194,16 @@ class RentalViewSet(viewsets.ModelViewSet):
         else:
             extension_rate = rental.daily_rate_snapshot
 
+        new_scheduled_end = rental.scheduled_end + timezone.timedelta(days=extension_days)
+        conflict_msg = self._check_vehicle_booking_conflict(
+            vehicle_id=rental.vehicle_id,
+            scheduled_start=rental.scheduled_start,
+            scheduled_end=new_scheduled_end,
+            exclude_rental_id=rental.id,
+        )
+        if conflict_msg:
+            return Response({'detail': conflict_msg}, status=400)
+
         settings_obj = ApplicationSettings.load()
 
         additional_base = extension_rate * extension_days
@@ -168,7 +212,7 @@ class RentalViewSet(viewsets.ModelViewSet):
         new_total = (new_base + new_gst + rental.driver_delivery_charge).quantize(Decimal('0.01'))
 
         with transaction.atomic():
-            rental.scheduled_end = rental.scheduled_end + timezone.timedelta(days=extension_days)
+            rental.scheduled_end = new_scheduled_end
             rental.booked_days = rental.booked_days + extension_days
             rental.free_km_total_snapshot = rental.free_km_total_snapshot + (settings_obj.free_km_per_day * extension_days)
             rental.base_amount = new_base

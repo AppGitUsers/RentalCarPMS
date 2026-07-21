@@ -29,11 +29,27 @@ class DashboardOverviewView(APIView):
             'total': vehicles_qs.count(),
         }
 
+        now = timezone.now()
+
         active_rentals = Rental.objects.filter(status='active').count()
         booked_rentals = Rental.objects.filter(status='booked').count()
 
-        now = timezone.now()
         overdue_rentals = Rental.objects.filter(status='active', scheduled_end__lt=now).count()
+
+        upcoming_bookings_qs = list(
+            Rental.objects.filter(status='booked', scheduled_start__gt=now)
+            .select_related('vehicle', 'customer')
+            .order_by('scheduled_start')
+            .values(
+                'id', 'scheduled_start', 'booked_days',
+                'vehicle__registration_number', 'vehicle__make', 'vehicle__model',
+                'customer__full_name',
+            )
+        )
+        for b in upcoming_bookings_qs:
+            hours_away = (b['scheduled_start'] - now).total_seconds() / 3600
+            b['hours_until_start'] = round(hours_away, 1)
+            b['is_soon'] = hours_away < 24
 
         finance_snapshot = get_finance_summary(today.month, today.year)
 
@@ -57,6 +73,7 @@ class DashboardOverviewView(APIView):
             'active_rentals': active_rentals,
             'booked_rentals': booked_rentals,
             'overdue_rentals': overdue_rentals,
+            'upcoming_bookings': upcoming_bookings_qs,
             'total_owners': CarOwner.objects.filter(is_active=True).count(),
             'total_staff': StaffMember.objects.filter(is_active=True).count(),
             'finance_this_month': finance_snapshot,

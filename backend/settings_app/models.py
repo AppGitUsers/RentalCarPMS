@@ -60,6 +60,12 @@ class ApplicationSettings(models.Model):
         help_text="Standard working hours per day used to pro-rate daily salary from monthly salary.",
     )
 
+    # ---- Booking protection ----
+    booking_buffer_hours = models.PositiveIntegerField(
+        default=2,
+        help_text="Minimum gap (hours) required between a rental's end and the next booking's scheduled start.",
+    )
+
     # ---- Misc ----
     currency_symbol = models.CharField(max_length=5, default="₹")
     session_timeout_hours = models.PositiveIntegerField(

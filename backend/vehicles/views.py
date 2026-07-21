@@ -22,6 +22,52 @@ class VehicleViewSet(viewsets.ModelViewSet):
     search_fields = ['registration_number', 'make', 'model', 'owner__name']
     ordering_fields = ['registration_number', 'created_at']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == 'list':
+            from django.db.models import Exists, OuterRef, Subquery
+            from django.utils import timezone
+            from django.utils.dateparse import parse_datetime
+            from rentals.models import Rental
+            from settings_app.models import ApplicationSettings
+
+            now = timezone.now()
+            next_qs = Rental.objects.filter(
+                vehicle=OuterRef('pk'),
+                status='booked',
+                scheduled_start__gt=now,
+            ).order_by('scheduled_start')
+            qs = qs.annotate(
+                next_booking_start=Subquery(next_qs.values('scheduled_start')[:1]),
+                next_booking_customer=Subquery(next_qs.values('customer__full_name')[:1]),
+            )
+
+            # Prefetch all future booked rentals — used by VehicleListSerializer.future_bookings
+            from django.db.models import Prefetch
+            future_qs = Rental.objects.filter(
+                status='booked', scheduled_start__gt=now,
+            ).order_by('scheduled_start').only('vehicle_id', 'scheduled_start', 'scheduled_end')
+            qs = qs.prefetch_related(
+                Prefetch('rentals', queryset=future_qs, to_attr='future_bookings_prefetch')
+            )
+
+            available_from = self.request.query_params.get('available_from')
+            available_to = self.request.query_params.get('available_to')
+            if available_from and available_to:
+                from_dt = parse_datetime(available_from)
+                to_dt = parse_datetime(available_to)
+                if from_dt and to_dt:
+                    settings_obj = ApplicationSettings.load()
+                    buffer = timezone.timedelta(hours=settings_obj.booking_buffer_hours)
+                    conflict_qs = Rental.objects.filter(
+                        vehicle=OuterRef('pk'),
+                        status__in=['booked', 'active'],
+                        scheduled_start__lt=to_dt + buffer,
+                        scheduled_end__gt=from_dt - buffer,
+                    )
+                    qs = qs.filter(is_active=True).exclude(Exists(conflict_qs))
+        return qs
+
     def get_serializer_class(self):
         if self.action == 'list':
             return VehicleListSerializer

@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Save, Building2, Percent, Receipt, ImageIcon, Users, Plus, Trash2, KeyRound } from 'lucide-react';
+import { Save, Building2, Percent, Receipt, ImageIcon, Users, Plus, Trash2, KeyRound, CalendarClock } from 'lucide-react';
 import Topbar from '../../components/layout/Topbar';
 import Card, { CardHeader } from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
@@ -118,6 +118,15 @@ export default function SettingsPage() {
             <TextArea label="Terms & Conditions" value={form.invoice_terms} onChange={(e) => update('invoice_terms', e.target.value)} rows={5} />
             <TextArea label="Footer Note" value={form.invoice_footer_note} onChange={(e) => update('invoice_footer_note', e.target.value)} rows={2} />
           </div>
+        </Card>
+
+        <Card>
+          <CardHeader icon={CalendarClock} title="Booking Protection" subtitle="Rules that prevent vehicle availability conflicts" />
+          <Input
+            label="Required Gap Before Next Booking (hours)" type="number" min="0" value={form.booking_buffer_hours}
+            onChange={(e) => update('booking_buffer_hours', e.target.value)}
+            hint="A rental's end time must be at least this many hours before the next reserved booking starts. Default 2h."
+          />
         </Card>
 
         <Card>
