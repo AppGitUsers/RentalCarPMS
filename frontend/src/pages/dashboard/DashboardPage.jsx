@@ -121,23 +121,23 @@ export default function DashboardPage() {
               {data.upcoming_bookings.map((b) => (
                 <div
                   key={b.id}
-                  className={`flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-lg border ${
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 rounded-lg border ${
                     b.is_soon ? 'bg-amber-50/60 border-amber-100' : 'bg-white border-navy-100'
                   }`}
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-navy-800 truncate">
+                  <div className="min-w-0 sm:flex-1">
+                    <p className="text-sm font-medium text-navy-800 break-words sm:truncate">
                       {b['vehicle__registration_number']} · {b['vehicle__make']} {b['vehicle__model']}
                     </p>
-                    <p className="text-xs text-navy-400 truncate">
+                    <p className="text-xs text-navy-400 break-words sm:truncate">
                       {b['customer__full_name']} · {b.booked_days} {b.booked_days === 1 ? 'day' : 'days'}
                     </p>
                   </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0 min-w-[7rem]">
+                  <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 flex-shrink-0 sm:min-w-[7rem]">
                     {b.is_soon ? (
                       <Badge variant="partial" dot={false} className="text-[10px] px-2 py-0.5 leading-none">Due Soon</Badge>
                     ) : (
-                      <span className="h-[18px]" aria-hidden="true" />
+                      <span className="hidden sm:inline-block h-[18px]" aria-hidden="true" />
                     )}
                     <span className="text-sm font-medium text-navy-600 tabular-nums whitespace-nowrap">
                       {formatDateTime(b.scheduled_start)}
