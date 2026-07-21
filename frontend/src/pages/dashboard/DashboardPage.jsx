@@ -11,11 +11,14 @@ import Badge from '../../components/ui/Badge';
 import { PageLoader, EmptyState } from '../../components/ui/Feedback';
 import { getDashboardOverview } from '../../api/dashboard';
 import { useSettings } from '../../context/SettingsContext';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDate, formatDateTime } from '../../utils/format';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { settings } = useSettings();
+  const { user } = useAuth();
+  const isAdmin = !user?.role || user?.role === 'admin';
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +32,7 @@ export default function DashboardPage() {
   const symbol = settings?.currency_symbol || '₹';
   const v = data.vehicle_status;
   const fin = data.finance_this_month;
+  const showFinance = isAdmin && fin;
 
   return (
     <div>
@@ -74,38 +78,40 @@ export default function DashboardPage() {
           <StatCard icon={CalendarCheck} tone="navy" label="Upcoming Bookings" value={data.booked_rentals} sublabel="Scheduled, not started" />
         </div>
 
-        {/* Finance snapshot */}
-        <Card>
-          <CardHeader
-            icon={Wallet}
-            title="This Month's Finance Snapshot"
-            subtitle="Income, expense and savings overview"
-            action={
-              <button onClick={() => navigate('/finance')} className="text-sm font-medium text-navy-600 hover:text-navy-800 flex items-center gap-1">
-                View Finance Dashboard <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            }
-          />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <FinanceMiniStat
-              icon={TrendingUp} tone="success" label="Total Income"
-              value={formatCurrency(fin.income.total_income, symbol)}
+        {/* Finance snapshot — admin only */}
+        {showFinance && (
+          <Card>
+            <CardHeader
+              icon={Wallet}
+              title="This Month's Finance Snapshot"
+              subtitle="Income, expense and savings overview"
+              action={
+                <button onClick={() => navigate('/finance')} className="text-sm font-medium text-navy-600 hover:text-navy-800 flex items-center gap-1">
+                  View Finance Dashboard <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              }
             />
-            <FinanceMiniStat
-              icon={TrendingDown} tone="danger" label="Total Expense"
-              value={formatCurrency(fin.expense.total_expense, symbol)}
-            />
-            <FinanceMiniStat
-              icon={PiggyBank} tone="amber" label="Net Savings"
-              value={formatCurrency(fin.savings, symbol)}
-            />
-            <FinanceMiniStat
-              icon={Wallet} tone={fin.income.rental_to_be_collected < 0 ? 'danger' : 'navy'}
-              label={fin.income.rental_to_be_collected < 0 ? 'Refunds Owed' : 'To Be Collected'}
-              value={formatCurrency(Math.abs(fin.income.rental_to_be_collected), symbol)}
-            />
-          </div>
-        </Card>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <FinanceMiniStat
+                icon={TrendingUp} tone="success" label="Total Income"
+                value={formatCurrency(fin.income.total_income, symbol)}
+              />
+              <FinanceMiniStat
+                icon={TrendingDown} tone="danger" label="Total Expense"
+                value={formatCurrency(fin.expense.total_expense, symbol)}
+              />
+              <FinanceMiniStat
+                icon={PiggyBank} tone="amber" label="Net Savings"
+                value={formatCurrency(fin.savings, symbol)}
+              />
+              <FinanceMiniStat
+                icon={Wallet} tone={fin.income.rental_to_be_collected < 0 ? 'danger' : 'navy'}
+                label={fin.income.rental_to_be_collected < 0 ? 'Refunds Owed' : 'To Be Collected'}
+                value={formatCurrency(Math.abs(fin.income.rental_to_be_collected), symbol)}
+              />
+            </div>
+          </Card>
+        )}
 
         {/* Upcoming bookings */}
         {data.upcoming_bookings?.length > 0 && (

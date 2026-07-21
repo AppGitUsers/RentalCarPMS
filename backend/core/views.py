@@ -51,7 +51,7 @@ class DashboardOverviewView(APIView):
             b['hours_until_start'] = round(hours_away, 1)
             b['is_soon'] = hours_away < 24
 
-        finance_snapshot = get_finance_summary(today.month, today.year)
+        finance_snapshot = get_finance_summary(today.month, today.year) if request.user.role == 'admin' else None
 
         from datetime import timedelta
         soon = today + timedelta(days=30)
