@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Check, ChevronDown, Search, X } from 'lucide-react';
+import { Check, ChevronDown, Loader2, Search, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 /**
  * A searchable dropdown. `options` is an array of { value, label, sublabel? }.
  * Typing in the input filters the option list live. Click outside or Escape
  * closes it. Supports an optional `onCreateNew` for "add new X" affordance.
+ *
+ * For server-searched selects (`onSearch`), `options` only ever holds the
+ * current search results — it should NOT have the selected item stitched in
+ * (that would leak a stale previous selection into unrelated search results).
+ * Pass `selectedLabel`/`selectedSublabel` instead so the closed trigger can
+ * still show the selection even when it isn't in the current result set.
  */
 export default function SearchableSelect({
   options = [],
@@ -22,13 +28,18 @@ export default function SearchableSelect({
   className,
   onSearch,
   searching = false,
+  selectedLabel,
+  selectedSublabel,
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [dropdownPos, setDropdownPos] = useState(null);
   const containerRef = useRef(null);
+  const triggerRef = useRef(null);
   const inputRef = useRef(null);
 
-  const selectedOption = options.find((o) => String(o.value) === String(value));
+  const selectedOption = options.find((o) => String(o.value) === String(value))
+    || (value != null && selectedLabel ? { value, label: selectedLabel, sublabel: selectedSublabel } : null);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -40,6 +51,29 @@ export default function SearchableSelect({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Position the dropdown with `fixed` coordinates computed from the trigger
+  // button, rather than `absolute` inside the normal flow. A `SearchableSelect`
+  // is often the last field before a modal's bottom edge, and modals scroll
+  // their body with `overflow-y-auto` — an `absolute` dropdown gets clipped by
+  // that ancestor the moment it would overflow past the visible scroll area.
+  // `fixed` positioning (with no transformed ancestor in this app's modals)
+  // escapes that clipping and renders relative to the viewport instead.
+  useEffect(() => {
+    if (!open) return;
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPos({ top: rect.bottom + 6, left: rect.left, width: rect.width });
+    };
+    updatePosition();
+    window.addEventListener('scroll', updatePosition, true);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      window.removeEventListener('scroll', updatePosition, true);
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, [open]);
 
   // Debounced server-side search
   useEffect(() => {
@@ -76,6 +110,7 @@ export default function SearchableSelect({
         </label>
       )}
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
         onClick={() => {
@@ -100,10 +135,17 @@ export default function SearchableSelect({
         </div>
       </button>
 
-      {open && !disabled && (
-        <div className="absolute z-30 mt-1.5 w-full bg-white rounded-lg border border-navy-200 shadow-card-hover overflow-hidden animate-fade-in">
+      {open && !disabled && dropdownPos && (
+        <div
+          style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }}
+          className="z-[60] bg-white rounded-lg border border-navy-200 shadow-card-hover overflow-hidden animate-fade-in"
+        >
           <div className="flex items-center gap-2 px-3 py-2 border-b border-navy-100">
-            <Search className="w-4 h-4 text-navy-300 flex-shrink-0" />
+            {searching ? (
+              <Loader2 className="w-4 h-4 text-navy-300 flex-shrink-0 animate-spin" />
+            ) : (
+              <Search className="w-4 h-4 text-navy-300 flex-shrink-0" />
+            )}
             <input
               ref={inputRef}
               value={query}
@@ -113,7 +155,7 @@ export default function SearchableSelect({
             />
           </div>
           <div className="max-h-56 overflow-y-auto py-1">
-            {searching ? (
+            {searching && filtered.length === 0 ? (
               <div className="px-3.5 py-3 text-sm text-navy-400 text-center">Searching...</div>
             ) : onSearch && query.length < 2 ? (
               <div className="px-3.5 py-3 text-sm text-navy-400 text-center">Type to search...</div>

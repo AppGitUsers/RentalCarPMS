@@ -166,10 +166,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
     }
   }, [form.scheduled_start, form.scheduled_end]);
 
-  const customerOptions = [
-    ...(selectedCustomer ? [{ value: selectedCustomer.id, label: selectedCustomer.full_name, sublabel: selectedCustomer.phone }] : []),
-    ...customers.filter((c) => String(c.id) !== String(selectedCustomer?.id)).map((c) => ({ value: c.id, label: c.full_name, sublabel: c.phone })),
-  ];
+  const customerOptions = customers.map((c) => ({ value: c.id, label: c.full_name, sublabel: c.phone }));
   const vehicleOptions = vehicles.map((v) => ({
     value: v.id,
     label: `${v.registration_number} — ${v.make} ${v.model}`,
@@ -292,6 +289,8 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
                 placeholder="Search by name or phone..."
                 onSearch={handleCustomerSearch}
                 searching={customerSearching}
+                selectedLabel={selectedCustomer?.full_name}
+                selectedSublabel={selectedCustomer?.phone}
               />
               <Button variant="secondary" icon={UserPlus} onClick={() => setCustomerFormOpen(true)}>New</Button>
             </div>
