@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   MapPin, Gauge, Calendar, Download, FileText, CreditCard, AlertTriangle, CheckCircle2, CalendarPlus,
+  Ban, Pencil,
 } from 'lucide-react';
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
@@ -11,9 +12,17 @@ import Select from '../../components/ui/Select';
 import PaymentQRDisplay from '../../components/ui/PaymentQRDisplay';
 import { Spinner } from '../../components/ui/Feedback';
 import * as rentalsApi from '../../api/rentals';
+import * as staffApi from '../../api/staff';
 import { useToast } from '../../components/ui/Toast';
 import { useSettings } from '../../context/SettingsContext';
-import { formatCurrency, formatDateTime } from '../../utils/format';
+import { useAuth } from '../../context/AuthContext';
+import { formatCurrency, formatDateTime, toDateTimeInputValue } from '../../utils/format';
+
+const PICKUP_VENUE_OPTIONS = [
+  { value: 'parking', label: 'Parking' },
+  { value: 'airport', label: 'Airport' },
+  { value: 'other', label: 'Other Location' },
+];
 
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' }, { value: 'upi', label: 'UPI' },
@@ -23,7 +32,9 @@ const PAYMENT_METHODS = [
 export default function RentalDetailModal({ open, onClose, rentalId, initialMode, onChanged }) {
   const { showToast } = useToast();
   const { settings } = useSettings();
+  const { user } = useAuth();
   const symbol = settings?.currency_symbol || '₹';
+  const isAdmin = !user?.role || user?.role === 'admin';
 
   const [rental, setRental] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +49,11 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [extensionDays, setExtensionDays] = useState('1');
   const [extensionRate, setExtensionRate] = useState('');
+  const [refundGiven, setRefundGiven] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [staffList, setStaffList] = useState([]);
+  const [editForm, setEditForm] = useState(null);
+  const [editErrors, setEditErrors] = useState({});
 
   const load = () => {
     setLoading(true);
@@ -140,6 +156,77 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
     }
   };
 
+  const handleCancelRental = async () => {
+    const amountPaid = Number(rental.amount_paid || 0);
+    const refund = refundGiven ? Number(refundAmount || 0) : 0;
+    if (refundGiven && (refundAmount === '' || refund < 0 || refund > amountPaid)) {
+      showToast(`Refund amount must be between 0 and ${formatCurrency(amountPaid, symbol)}`, 'error');
+      return;
+    }
+    setWorking(true);
+    try {
+      await rentalsApi.cancelRental(rental.id, refund);
+      showToast('Booking cancelled');
+      load();
+      setMode('view');
+      onChanged?.();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not cancel booking', 'error');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const openEdit = () => {
+    setEditForm({
+      destination: rental.destination || '',
+      purpose: rental.purpose || '',
+      scheduled_start: toDateTimeInputValue(rental.scheduled_start),
+      scheduled_end: toDateTimeInputValue(rental.scheduled_end),
+      assigned_staff: rental.assigned_staff || '',
+      pickup_venue: rental.pickup_venue || 'parking',
+      pickup_venue_other_location: rental.pickup_venue_other_location || '',
+      pickup_venue_other_link: rental.pickup_venue_other_link || '',
+      driver_delivery_charge: rental.driver_delivery_charge || '0',
+    });
+    setEditErrors({});
+    if (!staffList.length) {
+      staffApi.listStaff({ is_active: true }).then((d) => setStaffList(d.results || d)).catch(() => {});
+    }
+    setMode('edit');
+  };
+
+  const handleEditSubmit = async () => {
+    const errs = {};
+    if (!editForm.scheduled_start) errs.scheduled_start = 'Required';
+    if (!editForm.scheduled_end) errs.scheduled_end = 'Required';
+    if (Object.keys(errs).length) { setEditErrors(errs); return; }
+
+    const isOther = editForm.pickup_venue === 'other';
+    setWorking(true);
+    try {
+      await rentalsApi.updateRental(rental.id, {
+        destination: editForm.destination,
+        purpose: editForm.purpose,
+        scheduled_start: new Date(editForm.scheduled_start).toISOString(),
+        scheduled_end: new Date(editForm.scheduled_end).toISOString(),
+        assigned_staff: editForm.assigned_staff || null,
+        pickup_venue: editForm.pickup_venue,
+        pickup_venue_other_location: isOther ? editForm.pickup_venue_other_location : '',
+        pickup_venue_other_link: isOther ? editForm.pickup_venue_other_link : '',
+        driver_delivery_charge: isOther ? Number(editForm.driver_delivery_charge || 0) : 0,
+      });
+      showToast('Rental updated successfully');
+      load();
+      setMode('view');
+      onChanged?.();
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not update rental', 'error');
+    } finally {
+      setWorking(false);
+    }
+  };
+
   const handleDownload = async (type) => {
     try {
       const blob = await rentalsApi.downloadRentalPdf(rental.id, type);
@@ -168,12 +255,27 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
         <div className="py-12 flex justify-center"><Spinner /></div>
       ) : mode === 'view' ? (
         <ViewMode
-          rental={rental} symbol={symbol}
+          rental={rental} symbol={symbol} isAdmin={isAdmin}
           onStart={() => { setOdometerStart(rental.odometer_start || ''); setMode('start'); }}
           onClose={() => { setOdometerEnd(''); setDamageAmount('0'); setDamageNotes(''); setMode('close'); }}
           onPay={() => { setPaymentAmount(rental.balance_due); setMode('pay'); }}
           onExtend={() => { setExtensionDays('1'); setExtensionRate(String(rental.daily_rate_snapshot)); setMode('extend'); }}
+          onCancelRental={() => { setRefundGiven(false); setRefundAmount(''); setMode('cancelConfirm'); }}
+          onEditRental={openEdit}
           onDownload={handleDownload}
+        />
+      ) : mode === 'cancelConfirm' ? (
+        <CancelConfirmMode
+          rental={rental} symbol={symbol}
+          refundGiven={refundGiven} setRefundGiven={setRefundGiven}
+          refundAmount={refundAmount} setRefundAmount={setRefundAmount}
+          onCancel={() => setMode('view')} onConfirm={handleCancelRental} working={working}
+        />
+      ) : mode === 'edit' ? (
+        <EditMode
+          rental={rental} editForm={editForm} setEditForm={setEditForm} errors={editErrors}
+          staffList={staffList}
+          onCancel={() => setMode('view')} onConfirm={handleEditSubmit} working={working}
         />
       ) : mode === 'start' ? (
         <div className="space-y-4">
@@ -223,7 +325,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   );
 }
 
-function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownload }) {
+function ViewMode({ rental, symbol, isAdmin, onStart, onClose, onPay, onExtend, onCancelRental, onEditRental, onDownload }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -290,6 +392,12 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
         {rental.balance_due > 0 && rental.status !== 'cancelled' && (
           <Button variant="primary" icon={CreditCard} onClick={onPay}>Record Payment</Button>
         )}
+        {isAdmin && (rental.status === 'booked' || rental.status === 'active') && (
+          <Button variant="secondary" icon={Pencil} onClick={onEditRental}>Edit Rental</Button>
+        )}
+        {isAdmin && rental.status === 'booked' && (
+          <Button variant="danger" icon={Ban} onClick={onCancelRental}>Cancel Rental</Button>
+        )}
         <Button variant="secondary" icon={Download} onClick={() => onDownload('invoice')}>Invoice PDF</Button>
         <Button variant="secondary" icon={FileText} onClick={() => onDownload('agreement')}>Agreement PDF</Button>
       </div>
@@ -333,6 +441,74 @@ function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onDownloa
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function CancelConfirmMode({ rental, symbol, refundGiven, setRefundGiven, refundAmount, setRefundAmount, onCancel, onConfirm, working }) {
+  const amountPaid = Number(rental.amount_paid || 0);
+  const refund = refundGiven ? Number(refundAmount || 0) : 0;
+  const retained = Math.max(amountPaid - refund, 0);
+  const refundInvalid = refundGiven && (refundAmount === '' || refund < 0 || refund > amountPaid);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2.5 bg-danger-50 border border-danger-100 rounded-lg px-3.5 py-2.5">
+        <AlertTriangle className="w-4 h-4 text-danger-500 flex-shrink-0" />
+        <p className="text-sm text-danger-600">This will cancel the booking. This action cannot be undone.</p>
+      </div>
+
+      <div className="bg-navy-50/60 border border-navy-100 rounded-xl p-4 space-y-2">
+        <ChargeRow label="Total Rental Amount" value={formatCurrency(rental.total_amount, symbol)} />
+        <ChargeRow label="Amount Collected" value={formatCurrency(rental.amount_paid, symbol)} />
+        <ChargeRow label="Balance (To Be Collected)" value={formatCurrency(rental.balance_due, symbol)} />
+      </div>
+
+      {amountPaid > 0 && (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-navy-700 mb-1.5">Was any amount refunded to the customer?</label>
+            <div className="flex gap-3">
+              <Button
+                variant={!refundGiven ? 'primary' : 'secondary'} size="sm" className="flex-1"
+                onClick={() => { setRefundGiven(false); setRefundAmount(''); }}
+              >
+                No Refund
+              </Button>
+              <Button
+                variant={refundGiven ? 'primary' : 'secondary'} size="sm" className="flex-1"
+                onClick={() => { setRefundGiven(true); setRefundAmount(String(amountPaid)); }}
+              >
+                Yes, Refunded
+              </Button>
+            </div>
+          </div>
+
+          {refundGiven && (
+            <Input
+              label="Refund Amount" type="number" required
+              value={refundAmount} onChange={(e) => setRefundAmount(e.target.value)}
+              error={refundInvalid ? `Must be between 0 and ${formatCurrency(amountPaid, symbol)}` : undefined}
+              hint={`Max refundable: ${formatCurrency(amountPaid, symbol)}`}
+            />
+          )}
+
+          <div className="bg-navy-50/60 rounded-lg px-3.5 py-2.5 text-sm">
+            <ChargeRow
+              label={refundGiven ? 'Retained as Cancellation Fee' : 'Retained (kept in full)'}
+              value={formatCurrency(retained, symbol)}
+              bold
+            />
+          </div>
+        </>
+      )}
+
+      <div className="flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>Go Back</Button>
+        <Button variant="danger" className="flex-1" onClick={onConfirm} loading={working} disabled={refundInvalid}>
+          Confirm Cancellation
+        </Button>
+      </div>
     </div>
   );
 }
@@ -452,6 +628,72 @@ function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extension
       <div className="flex gap-3">
         <Button variant="secondary" className="flex-1" onClick={onCancel}>Cancel</Button>
         <Button variant="primary" className="flex-1" onClick={onConfirm} loading={working}>Confirm Extension</Button>
+      </div>
+    </div>
+  );
+}
+
+function EditMode({ rental, editForm, setEditForm, errors, staffList, onCancel, onConfirm, working }) {
+  if (!editForm) return null;
+  const update = (key, value) => setEditForm((f) => ({ ...f, [key]: value }));
+  const isOther = editForm.pickup_venue === 'other';
+
+  const nextBookingStart = rental.next_booking ? new Date(rental.next_booking.scheduled_start) : null;
+
+  return (
+    <div className="space-y-4">
+      {rental.next_booking && (
+        <div className="flex items-start gap-2.5 rounded-lg px-3.5 py-2.5 bg-navy-50 border border-navy-100">
+          <CalendarPlus className="w-4 h-4 flex-shrink-0 mt-0.5 text-navy-400" />
+          <p className="text-sm text-navy-600">
+            Next booking for this vehicle: <strong>{formatDateTime(rental.next_booking.scheduled_start)}</strong> ({rental.next_booking.customer_name}) — the new schedule must leave the required buffer gap before it.
+          </p>
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input label="Scheduled Start" type="datetime-local" required value={editForm.scheduled_start}
+          error={errors.scheduled_start} onChange={(e) => update('scheduled_start', e.target.value)} />
+        <Input label="Scheduled End" type="datetime-local" required value={editForm.scheduled_end}
+          error={errors.scheduled_end}
+          max={nextBookingStart ? toDateTimeInputValue(nextBookingStart) : undefined}
+          onChange={(e) => update('scheduled_end', e.target.value)} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Input label="Destination" value={editForm.destination} onChange={(e) => update('destination', e.target.value)} />
+        <Input label="Purpose of Trip" value={editForm.purpose} onChange={(e) => update('purpose', e.target.value)} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-navy-700 mb-1.5">Assigned Driver</label>
+          <select
+            value={editForm.assigned_staff}
+            onChange={(e) => update('assigned_staff', e.target.value)}
+            className="w-full border border-navy-200 rounded-lg px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-navy-400 text-navy-800"
+          >
+            <option value="">No driver assigned</option>
+            {staffList.map((s) => (
+              <option key={s.id} value={s.id}>{s.full_name} · {s.role.replace('_', ' ')}</option>
+            ))}
+          </select>
+        </div>
+        <Select label="Pickup Venue" options={PICKUP_VENUE_OPTIONS} value={editForm.pickup_venue}
+          onChange={(e) => update('pickup_venue', e.target.value)} />
+      </div>
+      {isOther && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Input label="Other Location" value={editForm.pickup_venue_other_location}
+            onChange={(e) => update('pickup_venue_other_location', e.target.value)} />
+          <Input label="Location Link (optional)" value={editForm.pickup_venue_other_link}
+            onChange={(e) => update('pickup_venue_other_link', e.target.value)} />
+        </div>
+      )}
+      {isOther && (
+        <Input label="Driver Delivery Charge" type="number" value={editForm.driver_delivery_charge}
+          onChange={(e) => update('driver_delivery_charge', e.target.value)} />
+      )}
+      <div className="flex gap-3">
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>Discard</Button>
+        <Button variant="primary" className="flex-1" onClick={onConfirm} loading={working}>Save Changes</Button>
       </div>
     </div>
   );

@@ -15,6 +15,7 @@ const ROLE_OPTIONS = [
   { value: 'manager', label: 'Manager' },
   { value: 'mechanic', label: 'Mechanic' },
   { value: 'front_desk', label: 'Front Desk' },
+  { value: 'employee', label: 'Employee' },
   { value: 'other', label: 'Other' },
 ];
 

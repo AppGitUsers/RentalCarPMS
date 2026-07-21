@@ -19,6 +19,7 @@ class FinanceEntry(models.Model):
         ("office", "Office / Rent"),
         ("marketing", "Marketing"),
         ("insurance", "Insurance"),
+        ("rental_cancellation", "Rental Cancellation"),
         ("misc_income", "Other Income"),
         ("misc_expense", "Other Expense"),
     ]
@@ -27,7 +28,7 @@ class FinanceEntry(models.Model):
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default="misc_expense")
     title = models.CharField(max_length=150)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    date = models.DateField()
+    date = models.DateField(db_index=True)
     notes = models.TextField(blank=True, default="")
     attachment = models.FileField(upload_to="finance/attachments/", blank=True, null=True)
 

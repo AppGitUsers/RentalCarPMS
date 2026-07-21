@@ -17,6 +17,7 @@ ROLE_CHOICES = [
     ('manager', 'Manager'),
     ('mechanic', 'Mechanic'),
     ('front_desk', 'Front Desk'),
+    ('employee', 'Employee'),
     ('other', 'Other'),
 ]
 
@@ -81,7 +82,7 @@ class StaffPayment(models.Model):
     cl_days = models.PositiveIntegerField(default=0)
     deduction_days = models.PositiveIntegerField(default=0)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    paid_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(auto_now_add=True, db_index=True)
     notes = models.CharField(max_length=200, blank=True, default='')
 
     class Meta:

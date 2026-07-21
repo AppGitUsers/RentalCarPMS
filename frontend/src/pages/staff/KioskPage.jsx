@@ -5,7 +5,7 @@ import { kioskPunch } from '../../api/staff';
 
 const ROLE_LABELS = {
   manager: 'Manager', driver: 'Driver', cleaner: 'Cleaner / Detailer',
-  front_desk: 'Front Desk', mechanic: 'Mechanic', other: 'Other',
+  front_desk: 'Front Desk', mechanic: 'Mechanic', employee: 'Employee', other: 'Other',
 };
 
 const AUTO_RESET_SECS = 6;

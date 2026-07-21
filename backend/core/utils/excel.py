@@ -24,12 +24,13 @@ def _autosize(ws):
         ws.column_dimensions[get_column_letter(col_cells[0].column)].width = min(max(length + 2, 10), 40)
 
 
-def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, month=None, year=None, label=None) -> bytes:
+def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payments, income_entries=(), month=None, year=None, label=None) -> bytes:
     """
     Sheet 1: every rental order in the period - rental id, customer name/number,
              vehicle number, base amount, gst %, gst amount, total.
-    Sheet 2: all expenses for the period (custom expense entries, owner
-             payouts, staff salary payments) in one consolidated list.
+    Sheet 2: all income and expenses for the period other than rental income -
+             custom income entries, custom expense entries, owner payouts,
+             staff salary payments - in one consolidated list.
     """
     wb = Workbook()
 
@@ -53,10 +54,13 @@ def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payme
         ])
     _autosize(ws1)
 
-    ws2 = wb.create_sheet("Expenses")
+    ws2 = wb.create_sheet("Other Income & Expenses")
     headers2 = ["Type", "Category / Recipient", "Title / Description", "Amount", "Date", "Notes"]
     ws2.append(headers2)
     _style_header(ws2)
+
+    for i in income_entries:
+        ws2.append(["Custom Income", i.get_category_display(), i.title, float(i.amount), i.date.strftime("%d-%m-%Y"), i.notes])
 
     for e in expense_entries:
         ws2.append(["Custom Expense", e.get_category_display(), e.title, float(e.amount), e.date.strftime("%d-%m-%Y"), e.notes])
@@ -74,9 +78,9 @@ def build_finance_excel(rentals_qs, expense_entries, owner_payouts, salary_payme
     excel_kb = len(buffer.getvalue()) / 1024
     period = label or f"{month}/{year}"
     logger.info(
-        "Finance Excel built — period: %s, rentals: %s, expenses: %s, owner payouts: %s, salary payments: %s, size: %.0fKB",
+        "Finance Excel built — period: %s, rentals: %s, income entries: %s, expenses: %s, owner payouts: %s, salary payments: %s, size: %.0fKB",
         period,
-        sum(1 for _ in rentals_qs), sum(1 for _ in expense_entries),
+        sum(1 for _ in rentals_qs), sum(1 for _ in income_entries), sum(1 for _ in expense_entries),
         sum(1 for _ in owner_payouts), sum(1 for _ in salary_payments),
         excel_kb,
     )

@@ -324,7 +324,7 @@ class OwnerPayout(models.Model):
     rentals = models.ManyToManyField(Rental, related_name="owner_payouts", blank=True)
 
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    paid_at = models.DateTimeField(auto_now_add=True)
+    paid_at = models.DateTimeField(auto_now_add=True, db_index=True)
     notes = models.CharField(max_length=200, blank=True, default="")
 
     class Meta:

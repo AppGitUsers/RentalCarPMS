@@ -25,8 +25,13 @@ export async function closeRental(id, payload) {
   return resp.data;
 }
 
-export async function cancelRental(id) {
-  const resp = await client.post(`/rentals/${id}/cancel/`);
+export async function cancelRental(id, refundAmount = 0) {
+  const resp = await client.post(`/rentals/${id}/cancel/`, { refund_amount: refundAmount });
+  return resp.data;
+}
+
+export async function updateRental(id, data) {
+  const resp = await client.patch(`/rentals/${id}/`, data);
   return resp.data;
 }
 

@@ -7,6 +7,7 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,6 +23,11 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _require_admin(user):
+    if user.role != 'admin':
+        raise PermissionDenied("Admin access required.")
 
 
 class RentalViewSet(viewsets.ModelViewSet):
@@ -89,6 +95,33 @@ class RentalViewSet(viewsets.ModelViewSet):
         )
         return Response(RentalDetailSerializer(rental).data, status=status.HTTP_201_CREATED)
 
+    def update(self, request, *args, **kwargs):
+        """Admin-only edit of trip details. Blocked once the rental is closed/cancelled,
+        and re-runs the same booking-buffer conflict check used at creation time."""
+        _require_admin(request.user)
+        partial = kwargs.get('partial', False)
+        instance = self.get_object()
+
+        if instance.status not in ('booked', 'active'):
+            return Response({'detail': 'Only a booked or active rental can be edited.'}, status=400)
+
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+
+        vehicle = serializer.validated_data.get('vehicle', instance.vehicle)
+        scheduled_start = serializer.validated_data.get('scheduled_start', instance.scheduled_start)
+        scheduled_end = serializer.validated_data.get('scheduled_end', instance.scheduled_end)
+        conflict_msg = self._check_vehicle_booking_conflict(
+            vehicle_id=vehicle.id, scheduled_start=scheduled_start,
+            scheduled_end=scheduled_end, exclude_rental_id=instance.id,
+        )
+        if conflict_msg:
+            return Response({'detail': conflict_msg}, status=400)
+
+        self.perform_update(serializer)
+        logger.info("Rental #%s edited by admin %s", instance.id, request.user.username)
+        return Response(serializer.data)
+
     @action(detail=True, methods=['post'])
     def start(self, request, pk=None):
         """Marks the rental as active - the vehicle physically goes out. Sets actual_start, vehicle.status=rented."""
@@ -155,19 +188,54 @@ class RentalViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
+        """Admin-only. A rental can only be cancelled before pickup — once the
+        vehicle is handed over (active), it can no longer be cancelled.
+
+        If any amount was already collected, the admin states how much of it
+        was refunded. Whatever is NOT refunded (amount_paid - refund_amount)
+        is logged as a Rental Cancellation income entry in Finance — the
+        rental's own amount_paid/total_amount are left untouched as history,
+        and the rental itself is already excluded from the collected/to-be-
+        collected finance totals once cancelled, so this entry only needs to
+        cover the portion actually kept.
+        """
+        from finance.models import FinanceEntry
+
+        _require_admin(request.user)
         rental = self.get_object()
-        if rental.status not in ('booked', 'active'):
-            return Response({'detail': 'Cannot cancel a closed/cancelled rental.'}, status=400)
+        if rental.status != 'booked':
+            return Response({'detail': 'Only a booked (not yet picked up) rental can be cancelled.'}, status=400)
+
+        try:
+            refund_amount = Decimal(str(request.data.get('refund_amount', 0) or 0))
+        except Exception:
+            return Response({'detail': 'Invalid refund amount.'}, status=400)
+        if refund_amount < 0 or refund_amount > rental.amount_paid:
+            return Response({'detail': 'Refund amount cannot be negative or exceed the amount collected.'}, status=400)
+
+        kept_amount = rental.amount_paid - refund_amount
+
         with transaction.atomic():
-            was_active = rental.status == 'active'
             rental.status = 'cancelled'
             rental.save()
-            if was_active:
-                rental.vehicle.status = 'available'
-                rental.vehicle.save(update_fields=['status'])
+            if kept_amount > 0:
+                FinanceEntry.objects.create(
+                    entry_type='income',
+                    category='rental_cancellation',
+                    title=f"Cancellation fee — Rental #{rental.id} ({rental.invoice_number})",
+                    amount=kept_amount,
+                    date=timezone.now().date(),
+                    notes=(
+                        f"Customer: {rental.customer.full_name} · Vehicle: {rental.vehicle.registration_number}. "
+                        f"Collected ₹{rental.amount_paid}, refunded ₹{refund_amount}, retained ₹{kept_amount} "
+                        f"as a cancellation fee."
+                    ),
+                )
+
         logger.info(
-            "Rental #%s cancelled — customer: %s, vehicle: %s (was_active: %s)",
-            rental.id, rental.customer.full_name, rental.vehicle.registration_number, was_active,
+            "Rental #%s cancelled — customer: %s, vehicle: %s (by admin %s), refunded: %s, kept: %s",
+            rental.id, rental.customer.full_name, rental.vehicle.registration_number,
+            request.user.username, refund_amount, kept_amount,
         )
         return Response(RentalDetailSerializer(rental).data)
 
