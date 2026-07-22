@@ -78,6 +78,35 @@ export default function DashboardPage() {
           <StatCard icon={CalendarCheck} tone="navy" label="Upcoming Bookings" value={data.booked_rentals} sublabel="Scheduled, not started" />
         </div>
 
+        {/* Available today */}
+        <Card>
+          <CardHeader icon={Car} title="Available Today" subtitle="Not booked or active — free to hand over right now" />
+          {data.available_today_vehicles?.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {data.available_today_vehicles.map((veh) => (
+                <div key={veh.id} className="flex items-center gap-3 px-3.5 py-2.5 rounded-lg border border-navy-100 bg-white">
+                  {veh.primary_photo ? (
+                    <img src={veh.primary_photo} alt="" className="w-12 h-12 rounded-lg object-cover flex-shrink-0" />
+                  ) : (
+                    <div className="w-12 h-12 rounded-lg bg-navy-50 flex items-center justify-center flex-shrink-0">
+                      <Car className="w-5 h-5 text-navy-300" />
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-navy-800 truncate">{veh.registration_number}</p>
+                    <p className="text-xs text-navy-400 truncate">{veh.make} {veh.model}</p>
+                    {veh.vehicle_daily_rate != null && (
+                      <p className="text-xs text-navy-500 tabular-nums">{formatCurrency(veh.vehicle_daily_rate, symbol)}/day</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState icon={Car} title="No vehicles available" description="All active vehicles are currently booked, active, or under maintenance." />
+          )}
+        </Card>
+
         {/* Finance snapshot — admin only */}
         {showFinance && (
           <Card>
