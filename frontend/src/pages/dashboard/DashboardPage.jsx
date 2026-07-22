@@ -107,6 +107,31 @@ export default function DashboardPage() {
           )}
         </Card>
 
+        {/* Arriving shortly */}
+        {data.arriving_soon?.length > 0 && (
+          <Card>
+            <CardHeader icon={Clock} title="Arriving Shortly" subtitle="Active rentals due back within 24 hours" />
+            <div className="space-y-2">
+              {data.arriving_soon.map((a) => (
+                <div
+                  key={a.id}
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-3 px-3.5 py-2.5 rounded-lg border bg-amber-50/60 border-amber-100"
+                >
+                  <div className="min-w-0 sm:flex-1">
+                    <p className="text-sm font-medium text-navy-800 break-words sm:truncate">
+                      {a['vehicle__registration_number']} · {a['vehicle__make']} {a['vehicle__model']}
+                    </p>
+                    <p className="text-xs text-navy-400 break-words sm:truncate">{a['customer__full_name']}</p>
+                  </div>
+                  <span className="text-sm font-medium text-navy-600 tabular-nums whitespace-nowrap flex-shrink-0">
+                    {formatDateTime(a.scheduled_end)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Finance snapshot — admin only */}
         {showFinance && (
           <Card>

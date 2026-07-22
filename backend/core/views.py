@@ -82,6 +82,24 @@ class DashboardOverviewView(APIView):
             b['hours_until_start'] = round(hours_away, 1)
             b['is_soon'] = hours_away < 24
 
+        # Vehicles currently out that are due back within the next 24 hours -
+        # bounded by fleet size (only ever as many 'active' rentals as vehicles
+        # owned), so this stays cheap regardless of how much rental history piles up.
+        arriving_soon_qs = list(
+            Rental.objects.filter(
+                status='active', scheduled_end__gte=now, scheduled_end__lte=now + timezone.timedelta(hours=24),
+            )
+            .select_related('vehicle', 'customer')
+            .order_by('scheduled_end')
+            .values(
+                'id', 'scheduled_end',
+                'vehicle__registration_number', 'vehicle__make', 'vehicle__model',
+                'customer__full_name',
+            )
+        )
+        for a in arriving_soon_qs:
+            a['hours_until_arrival'] = round((a['scheduled_end'] - now).total_seconds() / 3600, 1)
+
         finance_snapshot = get_finance_summary(today.month, today.year) if request.user.role == 'admin' else None
 
         from datetime import timedelta
@@ -106,6 +124,7 @@ class DashboardOverviewView(APIView):
             'overdue_rentals': overdue_rentals,
             'upcoming_bookings': upcoming_bookings_qs,
             'available_today_vehicles': available_today_vehicles,
+            'arriving_soon': arriving_soon_qs,
             'total_owners': CarOwner.objects.filter(is_active=True).count(),
             'total_staff': StaffMember.objects.filter(is_active=True).count(),
             'finance_this_month': finance_snapshot,
