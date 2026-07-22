@@ -1,4 +1,5 @@
 import logging
+import math
 from decimal import Decimal
 
 from django.db import transaction
@@ -97,7 +98,16 @@ class RentalViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         """Admin-only edit of trip details. Blocked once the rental is closed/cancelled,
-        and re-runs the same booking-buffer conflict check used at creation time."""
+        and re-runs the same booking-buffer conflict check used at creation time.
+
+        If the edited dates change the booked-day count (whichever boundary moved,
+        growing or shrinking), the base/GST/total amounts and free-km allowance are
+        recalculated to match — extra days beyond the original count pick up the
+        current free-km-per-day setting (same as the extend action), while removed
+        days shrink the existing snapshot proportionally at its own original rate.
+        If the new total ends up below what the customer already paid, amount_paid
+        is clamped down to match (silently — this is a booking correction, not a
+        cancellation, so no refund prompt/FinanceEntry here)."""
         _require_admin(request.user)
         partial = kwargs.get('partial', False)
         instance = self.get_object()
@@ -117,6 +127,36 @@ class RentalViewSet(viewsets.ModelViewSet):
         )
         if conflict_msg:
             return Response({'detail': conflict_msg}, status=400)
+
+        new_booked_days = max(1, math.ceil((scheduled_end - scheduled_start).total_seconds() / 86400))
+        if new_booked_days != instance.booked_days:
+            delivery_charge = serializer.validated_data.get('driver_delivery_charge', instance.driver_delivery_charge)
+            new_base = instance.daily_rate_snapshot * new_booked_days
+            new_gst = (new_base * instance.gst_percent_snapshot / 100).quantize(Decimal('0.01'))
+            new_total = (new_base + new_gst + delivery_charge).quantize(Decimal('0.01'))
+
+            if new_booked_days > instance.booked_days:
+                settings_obj = ApplicationSettings.load()
+                added_days = new_booked_days - instance.booked_days
+                new_free_km = instance.free_km_total_snapshot + settings_obj.free_km_per_day * added_days
+            else:
+                new_free_km = round(Decimal(instance.free_km_total_snapshot) / instance.booked_days * new_booked_days)
+
+            new_amount_paid = min(instance.amount_paid, new_total)
+            if new_total <= 0 or new_amount_paid <= 0:
+                new_payment_status = 'pending'
+            elif new_amount_paid >= new_total:
+                new_payment_status = 'paid'
+            else:
+                new_payment_status = 'partial'
+
+            serializer.validated_data['booked_days'] = new_booked_days
+            serializer.validated_data['base_amount'] = new_base
+            serializer.validated_data['gst_amount'] = new_gst
+            serializer.validated_data['total_amount'] = new_total
+            serializer.validated_data['free_km_total_snapshot'] = int(new_free_km)
+            serializer.validated_data['amount_paid'] = new_amount_paid
+            serializer.validated_data['payment_status'] = new_payment_status
 
         self.perform_update(serializer)
         logger.info("Rental #%s edited by admin %s", instance.id, request.user.username)
