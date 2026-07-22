@@ -134,7 +134,7 @@ export default function VehiclesOwnersPage() {
 
           {upcomingArrivals.length > 0 && (
             <Card>
-              <p className="text-sm font-semibold text-navy-800 mb-3">Arriving Shortly — Next Returns</p>
+              <p className="text-sm font-semibold text-navy-800 mb-3">Next Returns</p>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {upcomingArrivals.map((a) => (
                   <div key={a.rental_id} className="flex-shrink-0 w-64 bg-navy-50/60 border border-navy-100 rounded-lg px-4 py-3">
