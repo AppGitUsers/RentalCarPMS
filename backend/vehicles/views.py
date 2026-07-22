@@ -32,11 +32,17 @@ class VehicleViewSet(viewsets.ModelViewSet):
             from settings_app.models import ApplicationSettings
 
             now = timezone.now()
+            # When editing an existing rental, its own booking shouldn't show up
+            # as if it were a separate reservation blocking its own vehicle.
+            exclude_rental_id = self.request.query_params.get('exclude_rental_id')
+
             next_qs = Rental.objects.filter(
                 vehicle=OuterRef('pk'),
                 status='booked',
                 scheduled_start__gt=now,
             ).order_by('scheduled_start')
+            if exclude_rental_id:
+                next_qs = next_qs.exclude(pk=exclude_rental_id)
             qs = qs.annotate(
                 next_booking_start=Subquery(next_qs.values('scheduled_start')[:1]),
                 next_booking_customer=Subquery(next_qs.values('customer__full_name')[:1]),
@@ -47,6 +53,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
             future_qs = Rental.objects.filter(
                 status='booked', scheduled_start__gt=now,
             ).order_by('scheduled_start').only('vehicle_id', 'scheduled_start', 'scheduled_end')
+            if exclude_rental_id:
+                future_qs = future_qs.exclude(pk=exclude_rental_id)
             qs = qs.prefetch_related(
                 Prefetch('rentals', queryset=future_qs, to_attr='future_bookings_prefetch')
             )
@@ -65,6 +73,8 @@ class VehicleViewSet(viewsets.ModelViewSet):
                         scheduled_start__lt=to_dt + buffer,
                         scheduled_end__gt=from_dt - buffer,
                     )
+                    if exclude_rental_id:
+                        conflict_qs = conflict_qs.exclude(pk=exclude_rental_id)
                     qs = qs.filter(is_active=True).exclude(Exists(conflict_qs))
         return qs
 

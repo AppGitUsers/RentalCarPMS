@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   MapPin, Gauge, Calendar, Download, FileText, CreditCard, AlertTriangle, CheckCircle2, CalendarPlus,
   Ban, Pencil,
@@ -9,10 +9,13 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 import TextArea from '../../components/ui/TextArea';
 import Select from '../../components/ui/Select';
+import SearchableSelect from '../../components/ui/SearchableSelect';
 import PaymentQRDisplay from '../../components/ui/PaymentQRDisplay';
 import { Spinner } from '../../components/ui/Feedback';
 import * as rentalsApi from '../../api/rentals';
 import * as staffApi from '../../api/staff';
+import * as customersApi from '../../api/customers';
+import * as vehiclesApi from '../../api/vehicles';
 import { useToast } from '../../components/ui/Toast';
 import { useSettings } from '../../context/SettingsContext';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +30,11 @@ const PICKUP_VENUE_OPTIONS = [
 const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' }, { value: 'upi', label: 'UPI' },
   { value: 'card', label: 'Card' }, { value: 'bank_transfer', label: 'Bank Transfer' },
+];
+
+const PAYMENT_TIMING_OPTIONS = [
+  { value: 'now', label: 'Pay Now' },
+  { value: 'later', label: 'Pay Later' },
 ];
 
 export default function RentalDetailModal({ open, onClose, rentalId, initialMode, onChanged }) {
@@ -54,10 +62,31 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   const [staffList, setStaffList] = useState([]);
   const [editForm, setEditForm] = useState(null);
   const [editErrors, setEditErrors] = useState({});
+  const [editCustomers, setEditCustomers] = useState([]);
+  const [editCustomerSearching, setEditCustomerSearching] = useState(false);
+  const [editSelectedCustomer, setEditSelectedCustomer] = useState(null);
+  const [editVehicles, setEditVehicles] = useState([]);
+  const [editVehiclesLoading, setEditVehiclesLoading] = useState(false);
+  const editVehicleDebounceRef = useRef(null);
 
   const load = () => {
     setLoading(true);
     rentalsApi.getRental(rentalId).then(setRental).finally(() => setLoading(false));
+  };
+
+  const fetchEditVehicles = async (from, to) => {
+    setEditVehiclesLoading(true);
+    try {
+      const params = { is_active: true, page_size: 500, exclude_rental_id: rental.id };
+      if (from && to) {
+        params.available_from = new Date(from).toISOString();
+        params.available_to = new Date(to).toISOString();
+      }
+      const d = await vehiclesApi.listVehicles(params);
+      setEditVehicles(d.results || d);
+    } finally {
+      setEditVehiclesLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -74,6 +103,18 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
       setPaymentAmount(String(rental.balance_due));
     }
   }, [rental, mode]);
+
+  // Re-fetch the available-vehicle list while editing a booked rental, whenever
+  // the edited dates change — mirrors NewRentalWizard's availability lookup.
+  useEffect(() => {
+    if (mode !== 'edit' || !editForm || rental?.status !== 'booked') return;
+    clearTimeout(editVehicleDebounceRef.current);
+    editVehicleDebounceRef.current = setTimeout(() => {
+      fetchEditVehicles(editForm.scheduled_start, editForm.scheduled_end);
+    }, 300);
+    return () => clearTimeout(editVehicleDebounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, editForm?.scheduled_start, editForm?.scheduled_end]);
 
   if (!open) return null;
 
@@ -177,12 +218,29 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
     }
   };
 
+  const handleEditCustomerSearch = async (query) => {
+    if (query.length < 2) { setEditCustomers([]); return; }
+    setEditCustomerSearching(true);
+    try {
+      const data = await customersApi.listCustomers({ search: query, page_size: 20 });
+      setEditCustomers(data.results || data);
+    } finally {
+      setEditCustomerSearching(false);
+    }
+  };
+
   const openEdit = () => {
     setEditForm({
+      customer: rental.customer,
+      vehicle: rental.vehicle,
+      odometer_start: rental.odometer_start ?? '',
       destination: rental.destination || '',
       purpose: rental.purpose || '',
       scheduled_start: toDateTimeInputValue(rental.scheduled_start),
       scheduled_end: toDateTimeInputValue(rental.scheduled_end),
+      payment_timing: rental.payment_timing || 'later',
+      security_deposit_collected: !!rental.security_deposit_collected,
+      security_deposit_amount: rental.security_deposit_amount || '0',
       assigned_staff: rental.assigned_staff || '',
       pickup_venue: rental.pickup_venue || 'parking',
       pickup_venue_other_location: rental.pickup_venue_other_location || '',
@@ -190,14 +248,21 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
       driver_delivery_charge: rental.driver_delivery_charge || '0',
     });
     setEditErrors({});
+    setEditSelectedCustomer(rental.customer_detail || null);
+    setEditCustomers([]);
     if (!staffList.length) {
       staffApi.listStaff({ is_active: true }).then((d) => setStaffList(d.results || d)).catch(() => {});
+    }
+    if (rental.status === 'booked') {
+      fetchEditVehicles(rental.scheduled_start, rental.scheduled_end);
     }
     setMode('edit');
   };
 
   const handleEditSubmit = async () => {
     const errs = {};
+    if (!editForm.customer) errs.customer = 'Required';
+    if (!editForm.vehicle) errs.vehicle = 'Required';
     if (!editForm.scheduled_start) errs.scheduled_start = 'Required';
     if (!editForm.scheduled_end) errs.scheduled_end = 'Required';
     if (Object.keys(errs).length) { setEditErrors(errs); return; }
@@ -206,10 +271,16 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
     setWorking(true);
     try {
       await rentalsApi.updateRental(rental.id, {
+        customer: editForm.customer,
+        vehicle: editForm.vehicle,
+        odometer_start: editForm.odometer_start === '' ? null : Number(editForm.odometer_start),
         destination: editForm.destination,
         purpose: editForm.purpose,
         scheduled_start: new Date(editForm.scheduled_start).toISOString(),
         scheduled_end: new Date(editForm.scheduled_end).toISOString(),
+        payment_timing: editForm.payment_timing,
+        security_deposit_collected: editForm.security_deposit_collected,
+        security_deposit_amount: editForm.security_deposit_collected ? Number(editForm.security_deposit_amount || 0) : 0,
         assigned_staff: editForm.assigned_staff || null,
         pickup_venue: editForm.pickup_venue,
         pickup_venue_other_location: isOther ? editForm.pickup_venue_other_location : '',
@@ -275,6 +346,10 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
         <EditMode
           rental={rental} editForm={editForm} setEditForm={setEditForm} errors={editErrors}
           staffList={staffList}
+          editCustomers={editCustomers} customerSearching={editCustomerSearching}
+          onCustomerSearch={handleEditCustomerSearch}
+          editSelectedCustomer={editSelectedCustomer} setEditSelectedCustomer={setEditSelectedCustomer}
+          editVehicles={editVehicles} vehiclesLoading={editVehiclesLoading}
           onCancel={() => setMode('view')} onConfirm={handleEditSubmit} working={working}
         />
       ) : mode === 'start' ? (
@@ -633,12 +708,25 @@ function ExtendMode({ rental, symbol, extensionDays, setExtensionDays, extension
   );
 }
 
-function EditMode({ rental, editForm, setEditForm, errors, staffList, onCancel, onConfirm, working }) {
+function EditMode({
+  rental, editForm, setEditForm, errors, staffList, onCancel, onConfirm, working,
+  editCustomers, customerSearching, onCustomerSearch, editSelectedCustomer, setEditSelectedCustomer,
+  editVehicles, vehiclesLoading,
+}) {
   if (!editForm) return null;
   const update = (key, value) => setEditForm((f) => ({ ...f, [key]: value }));
   const isOther = editForm.pickup_venue === 'other';
+  const canReassign = rental.status === 'booked';
 
   const nextBookingStart = rental.next_booking ? new Date(rental.next_booking.scheduled_start) : null;
+
+  const customerOptions = editCustomers.map((c) => ({ value: c.id, label: c.full_name, sublabel: c.phone }));
+  const vehicleOptions = editVehicles.map((v) => ({
+    value: v.id,
+    label: `${v.registration_number} — ${v.make} ${v.model}`,
+    sublabel: v.next_booking_start ? `Reserved ${formatDateTime(v.next_booking_start)}` : undefined,
+  }));
+  const selectedVehicle = editVehicles.find((v) => String(v.id) === String(editForm.vehicle));
 
   return (
     <div className="space-y-4">
@@ -650,6 +738,56 @@ function EditMode({ rental, editForm, setEditForm, errors, staffList, onCancel, 
           </p>
         </div>
       )}
+
+      {!canReassign && (
+        <div className="flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 bg-navy-50 border border-navy-100">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-navy-400" />
+          <p className="text-sm text-navy-600">Customer, vehicle and pickup odometer are locked once the vehicle has been picked up.</p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {canReassign ? (
+          <SearchableSelect
+            label="Customer" required
+            options={customerOptions}
+            value={editForm.customer}
+            error={errors.customer}
+            onChange={(v) => {
+              update('customer', v);
+              const found = editCustomers.find((c) => String(c.id) === String(v));
+              if (found) setEditSelectedCustomer(found);
+            }}
+            placeholder="Search by name or phone..."
+            onSearch={onCustomerSearch}
+            searching={customerSearching}
+            selectedLabel={editSelectedCustomer?.full_name}
+            selectedSublabel={editSelectedCustomer?.phone}
+          />
+        ) : (
+          <InfoMini icon={MapPin} label="Customer" value={rental.customer_detail?.full_name || '-'} />
+        )}
+        {canReassign ? (
+          <SearchableSelect
+            label="Vehicle" required
+            options={vehicleOptions}
+            value={editForm.vehicle}
+            error={errors.vehicle}
+            onChange={(v) => update('vehicle', v)}
+            placeholder="Search registration, make or model..."
+            emptyMessage="No vehicles available for the selected dates"
+            searching={vehiclesLoading}
+          />
+        ) : (
+          <InfoMini icon={MapPin} label="Vehicle" value={rental.vehicle_detail ? `${rental.vehicle_detail.registration_number} — ${rental.vehicle_detail.make} ${rental.vehicle_detail.model}` : '-'} />
+        )}
+      </div>
+      {canReassign && selectedVehicle?.next_booking_start && (
+        <p className="text-xs text-amber-600 -mt-2">
+          Next reservation: <strong>{formatDateTime(selectedVehicle.next_booking_start)}</strong> — the schedule below must end at least the required buffer before this.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input label="Scheduled Start" type="datetime-local" required value={editForm.scheduled_start}
           error={errors.scheduled_start} onChange={(e) => update('scheduled_start', e.target.value)} />
@@ -658,10 +796,39 @@ function EditMode({ rental, editForm, setEditForm, errors, staffList, onCancel, 
           max={nextBookingStart ? toDateTimeInputValue(nextBookingStart) : undefined}
           onChange={(e) => update('scheduled_end', e.target.value)} />
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {canReassign ? (
+          <Input label="Odometer at Pickup (km)" type="number" value={editForm.odometer_start}
+            onChange={(e) => update('odometer_start', e.target.value)} />
+        ) : (
+          <InfoMini icon={Gauge} label="Odometer at Pickup" value={rental.odometer_start ?? '-'} />
+        )}
+        <Select label="Payment Timing" options={PAYMENT_TIMING_OPTIONS} value={editForm.payment_timing}
+          onChange={(e) => update('payment_timing', e.target.value)} />
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Input label="Destination" value={editForm.destination} onChange={(e) => update('destination', e.target.value)} />
         <Input label="Purpose of Trip" value={editForm.purpose} onChange={(e) => update('purpose', e.target.value)} />
       </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+        <label className="flex items-center gap-2 text-sm text-navy-700 cursor-pointer py-2.5">
+          <input
+            type="checkbox"
+            checked={editForm.security_deposit_collected}
+            onChange={(e) => update('security_deposit_collected', e.target.checked)}
+            className="rounded"
+          />
+          Security deposit collected
+        </label>
+        {editForm.security_deposit_collected && (
+          <Input label="Security Deposit Amount" type="number" value={editForm.security_deposit_amount}
+            onChange={(e) => update('security_deposit_amount', e.target.value)} />
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-navy-700 mb-1.5">Assigned Driver</label>
