@@ -29,6 +29,21 @@ function defaultEnd() {
   return toDateTimeInputValue(d);
 }
 
+// Fresh defaults, recomputed each call — used both for the initial form state
+// and to clear the form after a successful booking (a half-entered draft should
+// still be restored if the wizard is closed without submitting, but data from a
+// booking that already went through shouldn't reappear in the next one).
+function getInitialForm() {
+  return {
+    customer_id: '', vehicle: '', destination: '', purpose: '',
+    scheduled_start: defaultStart(), scheduled_end: defaultEnd(), booked_days: 1,
+    odometer_start: '', payment_timing: 'later', security_deposit_collected: false,
+    security_deposit_amount: '', daily_rate: '',
+    assigned_staff: '', pickup_venue: 'parking',
+    pickup_venue_other_location: '', pickup_venue_other_link: '', driver_delivery_charge: '0',
+  };
+}
+
 export default function NewRentalWizard({ open, onClose, onCreated }) {
   const { showToast } = useToast();
   const { settings } = useSettings();
@@ -46,14 +61,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
   const [errors, setErrors] = useState({});
   const debounceRef = useRef(null);
 
-  const [form, setForm] = useState({
-    customer_id: '', vehicle: '', destination: '', purpose: '',
-    scheduled_start: defaultStart(), scheduled_end: defaultEnd(), booked_days: 1,
-    odometer_start: '', payment_timing: 'later', security_deposit_collected: false,
-    security_deposit_amount: '', daily_rate: '',
-    assigned_staff: '', pickup_venue: 'parking',
-    pickup_venue_other_location: '', pickup_venue_other_link: '', driver_delivery_charge: '0',
-  });
+  const [form, setForm] = useState(getInitialForm);
 
   const fetchVehicles = useCallback(async (from, to) => {
     setVehiclesLoading(true);
@@ -215,6 +223,7 @@ export default function NewRentalWizard({ open, onClose, onCreated }) {
       const rental = await rentalsApi.createRental(payload);
       showToast(`Booking ${rental.invoice_number} created successfully`);
       onCreated(rental, form.payment_timing);
+      setForm(getInitialForm());
       onClose();
     } catch (err) {
       showToast(err.response?.data?.detail || 'Could not create the booking', 'error');
