@@ -205,6 +205,8 @@ class RentalViewSet(viewsets.ModelViewSet):
 
         damage_charge_amount = request.data.get('damage_charge_amount', 0)
         damage_notes = request.data.get('damage_notes', '')
+        fees_waived = bool(request.data.get('fees_waived', False))
+        waiver_notes = request.data.get('waiver_notes', '')
         actual_end = request.data.get('actual_end')
         actual_end_dt = None
         if actual_end:
@@ -217,6 +219,8 @@ class RentalViewSet(viewsets.ModelViewSet):
                 actual_end=actual_end_dt,
                 damage_charge_amount=Decimal(str(damage_charge_amount or 0)),
                 damage_notes=damage_notes,
+                fees_waived=fees_waived,
+                waiver_notes=waiver_notes,
             )
 
         logger.info(

@@ -120,11 +120,11 @@ def build_invoice_pdf(rental, settings_obj) -> bytes:
     sym = settings_obj.currency_symbol
     charge_rows = [["Description", "Amount"]]
     charge_rows.append(["Base Rental Charge", f"{sym}{rental.base_amount}"])
-    if rental.late_fee_amount and rental.late_fee_amount > 0:
+    if rental.late_fee_amount and rental.late_fee_amount > 0 and not rental.fees_waived:
         fee_type = rental.late_fee_type
         label = f"Late Return Fee — {fee_type}" if fee_type else "Late Return Fee"
         charge_rows.append([label, f"{sym}{rental.late_fee_amount}"])
-    if rental.extra_km_amount and rental.extra_km_amount > 0:
+    if rental.extra_km_amount and rental.extra_km_amount > 0 and not rental.fees_waived:
         charge_rows.append(["Extra KM Charge", f"{sym}{rental.extra_km_amount}"])
     if rental.damage_charge_amount and rental.damage_charge_amount > 0:
         charge_rows.append(["Damage Charge", f"{sym}{rental.damage_charge_amount}"])

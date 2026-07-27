@@ -53,6 +53,8 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   const [odometerEnd, setOdometerEnd] = useState('');
   const [damageAmount, setDamageAmount] = useState('0');
   const [damageNotes, setDamageNotes] = useState('');
+  const [feesWaived, setFeesWaived] = useState(false);
+  const [waiverNotes, setWaiverNotes] = useState('');
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [extensionDays, setExtensionDays] = useState('1');
@@ -144,6 +146,8 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
         odometer_end: Number(odometerEnd),
         damage_charge_amount: Number(damageAmount || 0),
         damage_notes: damageNotes,
+        fees_waived: feesWaived,
+        waiver_notes: feesWaived ? waiverNotes : '',
       });
       showToast('Rental closed and charges calculated');
       load();
@@ -328,7 +332,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
         <ViewMode
           rental={rental} symbol={symbol} isAdmin={isAdmin}
           onStart={() => { setOdometerStart(rental.odometer_start || ''); setMode('start'); }}
-          onClose={() => { setOdometerEnd(''); setDamageAmount('0'); setDamageNotes(''); setMode('close'); }}
+          onClose={() => { setOdometerEnd(''); setDamageAmount('0'); setDamageNotes(''); setFeesWaived(false); setWaiverNotes(''); setMode('close'); }}
           onPay={() => { setPaymentAmount(rental.balance_due); setMode('pay'); }}
           onExtend={() => { setExtensionDays('1'); setExtensionRate(String(rental.daily_rate_snapshot)); setMode('extend'); }}
           onCancelRental={() => { setRefundGiven(false); setRefundAmount(''); setMode('cancelConfirm'); }}
@@ -367,6 +371,8 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
           odometerEnd={odometerEnd} setOdometerEnd={setOdometerEnd}
           damageAmount={damageAmount} setDamageAmount={setDamageAmount}
           damageNotes={damageNotes} setDamageNotes={setDamageNotes}
+          feesWaived={feesWaived} setFeesWaived={setFeesWaived}
+          waiverNotes={waiverNotes} setWaiverNotes={setWaiverNotes}
           onCancel={() => setMode('view')} onConfirm={handleClose} working={working}
         />
       ) : mode === 'extend' ? (
@@ -429,12 +435,21 @@ function ViewMode({ rental, symbol, isAdmin, onStart, onClose, onPay, onExtend, 
         <ChargeRow label="Base Amount" value={formatCurrency(rental.base_amount, symbol)} />
         {Number(rental.late_fee_amount) > 0 && (
           <ChargeRow
-            label={`Late Fee — ${rental.late_fee_type || 'Late Return'}`}
+            label={`Late Fee — ${rental.late_fee_type || 'Late Return'}${rental.fees_waived ? ' (Waived)' : ''}`}
             value={formatCurrency(rental.late_fee_amount, symbol)}
-            highlight="danger"
+            highlight={rental.fees_waived ? undefined : 'danger'}
           />
         )}
-        {Number(rental.extra_km_amount) > 0 && <ChargeRow label="Extra KM Charge" value={formatCurrency(rental.extra_km_amount, symbol)} highlight="danger" />}
+        {Number(rental.extra_km_amount) > 0 && (
+          <ChargeRow
+            label={`Extra KM Charge${rental.fees_waived ? ' (Waived)' : ''}`}
+            value={formatCurrency(rental.extra_km_amount, symbol)}
+            highlight={rental.fees_waived ? undefined : 'danger'}
+          />
+        )}
+        {rental.fees_waived && rental.waiver_notes && (
+          <p className="text-xs text-navy-400 italic pt-1">Waiver reason: {rental.waiver_notes}</p>
+        )}
         {Number(rental.damage_charge_amount) > 0 && <ChargeRow label="Damage Charge" value={formatCurrency(rental.damage_charge_amount, symbol)} highlight="danger" />}
         {Number(rental.driver_delivery_charge) > 0 && (
           <ChargeRow
@@ -588,7 +603,10 @@ function CancelConfirmMode({ rental, symbol, refundGiven, setRefundGiven, refund
   );
 }
 
-function CloseMode({ rental, symbol, odometerEnd, setOdometerEnd, damageAmount, setDamageAmount, damageNotes, setDamageNotes, onCancel, onConfirm, working }) {
+function CloseMode({
+  rental, symbol, odometerEnd, setOdometerEnd, damageAmount, setDamageAmount, damageNotes, setDamageNotes,
+  feesWaived, setFeesWaived, waiverNotes, setWaiverNotes, onCancel, onConfirm, working,
+}) {
   const kmCovered = odometerEnd ? Math.max(Number(odometerEnd) - (rental.odometer_start || 0), 0) : null;
   const freeKm = rental.free_km_total_snapshot;
   const extraKm = kmCovered !== null ? Math.max(kmCovered - freeKm, 0) : 0;
@@ -599,12 +617,33 @@ function CloseMode({ rental, symbol, odometerEnd, setOdometerEnd, damageAmount, 
   deadline.setMinutes(deadline.getMinutes() + rental.grace_period_minutes_snapshot);
   const isLate = now > deadline;
 
+  // Mirrors Rental._late_fee_breakdown() so the admin can see what waiving would
+  // actually cost/save before confirming, rather than a plain yes/no warning.
+  const estLateFee = (() => {
+    const netLateMs = (now - new Date(rental.scheduled_end)) - rental.grace_period_minutes_snapshot * 60000;
+    if (netLateMs <= 0) return { amount: 0, label: null };
+    const netHours = netLateMs / 3600000;
+    const rawFullDays = Math.floor(netHours / 24);
+    const remainder = netHours % 24;
+    let fullDays = rawFullDays;
+    let hasHalfDay = false;
+    if (remainder > 6) fullDays += 1;
+    else if (remainder > 0) hasHalfDay = true;
+    const dailyRate = Number(rental.daily_rate_snapshot);
+    const amount = dailyRate * fullDays + (hasHalfDay ? dailyRate / 2 : 0);
+    const label = fullDays === 0 ? 'Half Day' : `${fullDays} Day${fullDays > 1 ? 's' : ''}${hasHalfDay ? ' + Half Day' : ''}`;
+    return { amount, label };
+  })();
+
   return (
     <div className="space-y-4">
       {isLate && (
         <div className="flex items-center gap-2.5 bg-danger-50 border border-danger-100 rounded-lg px-3.5 py-2.5">
           <AlertTriangle className="w-4 h-4 text-danger-500 flex-shrink-0" />
-          <p className="text-sm text-danger-600">This return is past the scheduled end time — a late fee will apply automatically.</p>
+          <p className="text-sm text-danger-600">
+            This return is past the scheduled end time — a late fee of {formatCurrency(estLateFee.amount, symbol)}
+            {estLateFee.label ? ` (${estLateFee.label})` : ''} will apply{feesWaived ? ', but is waived below.' : ' automatically.'}
+          </p>
         </div>
       )}
 
@@ -618,7 +657,11 @@ function CloseMode({ rental, symbol, odometerEnd, setOdometerEnd, damageAmount, 
         <div className="bg-navy-50/60 rounded-lg px-3.5 py-2.5 text-sm space-y-1">
           <ChargeRow label="KM Covered" value={`${kmCovered} km`} />
           {extraKm > 0 && (
-            <ChargeRow label={`Extra KM (${extraKm} km)`} value={formatCurrency(estExtraKmCharge, symbol)} highlight="danger" />
+            <ChargeRow
+              label={`Extra KM (${extraKm} km)${feesWaived ? ' — waived' : ''}`}
+              value={formatCurrency(estExtraKmCharge, symbol)}
+              highlight={feesWaived ? undefined : 'danger'}
+            />
           )}
         </div>
       )}
@@ -626,6 +669,29 @@ function CloseMode({ rental, symbol, odometerEnd, setOdometerEnd, damageAmount, 
       <Input label="Damage Charge (optional)" type="number" value={damageAmount} onChange={(e) => setDamageAmount(e.target.value)} />
       {Number(damageAmount) > 0 && (
         <TextArea label="Damage Notes" value={damageNotes} onChange={(e) => setDamageNotes(e.target.value)} rows={2} placeholder="Describe the damage..." />
+      )}
+
+      {(isLate || extraKm > 0) && (
+        <div className="border border-navy-100 rounded-lg p-3.5 space-y-3">
+          <label className="flex items-center gap-2 text-sm text-navy-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={feesWaived}
+              onChange={(e) => setFeesWaived(e.target.checked)}
+              className="rounded"
+            />
+            Waive late fee &amp; extra KM charge (vehicle technical issue)
+          </label>
+          <p className="text-xs text-navy-400">
+            The late fee and extra KM amounts are still recorded on this rental — this only decides whether the customer is billed for them.
+          </p>
+          {feesWaived && (
+            <TextArea
+              label="Reason (optional)" value={waiverNotes} onChange={(e) => setWaiverNotes(e.target.value)}
+              rows={2} placeholder="e.g. Vehicle broke down near X, customer had to find a mechanic..."
+            />
+          )}
+        </div>
       )}
 
       <div className="flex gap-3">

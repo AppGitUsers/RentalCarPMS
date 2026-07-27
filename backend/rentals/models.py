@@ -95,6 +95,14 @@ class Rental(models.Model):
     gst_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
 
+    # Late fee / extra km are still calculated and stored above as normal even when
+    # waived — this flag only controls whether they're added to what's billed.
+    fees_waived = models.BooleanField(
+        default=False,
+        help_text="If set, late fee and extra km charges are calculated and recorded but not billed to the customer (e.g. vehicle technical issue caused the delay/extra distance).",
+    )
+    waiver_notes = models.TextField(blank=True, default="")
+
     owner_daily_amount_snapshot = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     owner_extra_km_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     owner_damage_percent_snapshot = models.DecimalField(max_digits=5, decimal_places=2, default=0)
@@ -157,16 +165,25 @@ class Rental(models.Model):
         elapsed_hours = Decimal((now - self.actual_start).total_seconds()) / Decimal(3600)
         return self.compute_base_amount_for_hours(elapsed_hours)
 
-    def close_rental(self, odometer_end: int, actual_end=None, damage_charge_amount=0, damage_notes=""):
+    def close_rental(self, odometer_end: int, actual_end=None, damage_charge_amount=0, damage_notes="",
+                      fees_waived=False, waiver_notes=""):
         """
         Finalise the rental: compute base amount (pro-rated/capped), late fee,
         extra km charge, damage charge, GST, and total. Sets status to closed
         and marks the vehicle available again. Caller is responsible for
         saving the vehicle separately if needed (we do it here for atomicity
         at the call site via a transaction).
+
+        `fees_waived` (e.g. vehicle broke down, causing the late return and the
+        extra km to find a mechanic) does NOT change the calculated late_fee_amount
+        or extra_km_amount — those are always recorded accurately — it only
+        excludes them from what's actually billed (total_amount/GST), so nothing
+        is collected for them and finance never counts them as income.
         """
         self.actual_end = actual_end or timezone.now()
         self.odometer_end = odometer_end
+        self.fees_waived = fees_waived
+        self.waiver_notes = waiver_notes
 
         # Late fee: repeating per 24-hour cycle beyond the grace window.
         # Each full day adds daily_rate; a remainder of ≤6h adds half_day; >6h rounds to full day.
@@ -187,7 +204,9 @@ class Rental(models.Model):
         self.damage_charge_amount = q2(Decimal(damage_charge_amount))
         self.damage_notes = damage_notes
 
-        subtotal = self.base_amount + self.late_fee_amount + self.extra_km_amount + self.damage_charge_amount
+        billable_late_fee = Decimal("0.00") if fees_waived else self.late_fee_amount
+        billable_extra_km = Decimal("0.00") if fees_waived else self.extra_km_amount
+        subtotal = self.base_amount + billable_late_fee + billable_extra_km + self.damage_charge_amount
         self.gst_amount = q2(subtotal * Decimal(self.gst_percent_snapshot) / Decimal(100))
         self.total_amount = q2(subtotal + self.gst_amount + self.driver_delivery_charge)
 
@@ -208,10 +227,11 @@ class Rental(models.Model):
         self.vehicle.save(update_fields=["status", "current_odometer"])
 
         logger.info(
-            "Rental #%s closed — base: %s, late fee: %s, extra km: %s, damage: %s, delivery: %s, GST: %s, total: %s, payment: %s",
+            "Rental #%s closed — base: %s, late fee: %s, extra km: %s, damage: %s, delivery: %s, GST: %s, total: %s, "
+            "payment: %s, fees_waived: %s",
             self.id, self.base_amount, self.late_fee_amount, self.extra_km_amount,
             self.damage_charge_amount, self.driver_delivery_charge,
-            self.gst_amount, self.total_amount, self.payment_status,
+            self.gst_amount, self.total_amount, self.payment_status, self.fees_waived,
         )
         return self
 
@@ -270,13 +290,13 @@ class Rental(models.Model):
         base_share = q2(owner_daily * self.booked_days)
 
         late_share = Decimal('0.00')
-        if self.late_fee_amount:
+        if self.late_fee_amount and not self.fees_waived:
             full_days, has_half_day = self._late_fee_breakdown()
             late_share = q2(
                 owner_daily * full_days + (owner_daily / 2 if has_half_day else Decimal("0"))
             )
 
-        extra_km_share = q2(
+        extra_km_share = Decimal('0.00') if self.fees_waived else q2(
             Decimal(str(self.extra_km_amount)) * Decimal(str(self.owner_extra_km_percent_snapshot)) / 100
         )
         damage_share = q2(

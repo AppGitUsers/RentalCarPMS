@@ -59,6 +59,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'owner_daily_amount_snapshot', 'owner_extra_km_percent_snapshot', 'owner_damage_percent_snapshot',
             'base_amount', 'late_fee_amount', 'late_fee_type', 'extra_km_amount', 'damage_charge_amount',
             'damage_notes', 'gst_amount', 'total_amount', 'amount_paid', 'payment_status',
+            'fees_waived', 'waiver_notes',
             'status', 'closing_notes', 'created_at', 'updated_at', 'closed_at',
             'payments', 'balance_due', 'live_estimate', 'km_covered', 'computed_owner_payout',
             'assigned_staff', 'assigned_staff_name', 'pickup_venue',
@@ -70,6 +71,7 @@ class RentalDetailSerializer(serializers.ModelSerializer):
             'extra_km_charge_snapshot', 'free_km_total_snapshot', 'grace_period_minutes_snapshot',
             'owner_daily_amount_snapshot', 'owner_extra_km_percent_snapshot', 'owner_damage_percent_snapshot',
             'base_amount', 'late_fee_amount', 'extra_km_amount', 'gst_amount', 'total_amount',
+            'fees_waived', 'waiver_notes',
             'created_at', 'updated_at', 'closed_at', 'payments',
         ]
 
