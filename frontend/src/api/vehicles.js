@@ -24,6 +24,11 @@ export async function deleteVehicle(id) {
   await client.delete(`/vehicles/${id}/`);
 }
 
+export async function setVehicleStatus(id, status) {
+  const resp = await client.post(`/vehicles/${id}/set_status/`, { status });
+  return resp.data;
+}
+
 export async function getVehicleStatusSummary() {
   const resp = await client.get('/vehicles/status_summary/');
   return resp.data;

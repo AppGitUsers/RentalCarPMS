@@ -3,14 +3,24 @@ import { Gauge, Fuel, Users as UsersIcon, Cog, Phone, Calendar, Pencil } from 'l
 import Modal from '../../components/ui/Modal';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
+import Select from '../../components/ui/Select';
 import { Spinner } from '../../components/ui/Feedback';
 import * as vehiclesApi from '../../api/vehicles';
 import { useSettings } from '../../context/SettingsContext';
+import { useToast } from '../../components/ui/Toast';
 import { formatCurrency, formatDateTime } from '../../utils/format';
 
-export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
+const STATUS_OPTIONS = [
+  { value: 'available', label: 'Available' },
+  { value: 'maintenance', label: 'Under Maintenance' },
+  { value: 'inactive', label: 'Inactive' },
+];
+
+export default function VehicleDetailModal({ open, onClose, vehicle, onChanged, onEdit }) {
   const { settings } = useSettings();
+  const { showToast } = useToast();
   const [history, setHistory] = useState(null);
+  const [statusSaving, setStatusSaving] = useState(false);
 
   useEffect(() => {
     if (open && vehicle) {
@@ -22,6 +32,19 @@ export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
 
   if (!vehicle) return null;
   const symbol = settings?.currency_symbol || '₹';
+
+  const handleStatusChange = async (newStatus) => {
+    setStatusSaving(true);
+    try {
+      const updated = await vehiclesApi.setVehicleStatus(vehicle.id, newStatus);
+      showToast(`Status changed to "${updated.status}"`);
+      onChanged?.(updated);
+    } catch (err) {
+      showToast(err.response?.data?.detail || 'Could not update status', 'error');
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   return (
     <Modal open={open} onClose={onClose} title={`${vehicle.make} ${vehicle.model}`} subtitle={vehicle.registration_number} size="lg">
@@ -40,7 +63,21 @@ export default function VehicleDetailModal({ open, onClose, vehicle, onEdit }) {
             <div className="flex items-center gap-1.5 text-navy-500"><UsersIcon className="w-3.5 h-3.5" /> {vehicle.seating_capacity} seats</div>
             <div className="flex items-center gap-1.5 text-navy-500 capitalize"><Cog className="w-3.5 h-3.5" /> {vehicle.transmission}</div>
             <div className="col-span-2 mt-1">
-              <Badge variant={vehicle.status}>{vehicle.status}</Badge>
+              {vehicle.status === 'rented' ? (
+                <div className="flex items-center gap-2">
+                  <Badge variant={vehicle.status}>{vehicle.status}</Badge>
+                  <span className="text-xs text-navy-400">Managed automatically while out on rent</span>
+                </div>
+              ) : (
+                <Select
+                  label="Status"
+                  options={STATUS_OPTIONS}
+                  value={vehicle.status}
+                  disabled={statusSaving}
+                  onChange={(e) => handleStatusChange(e.target.value)}
+                  className="max-w-xs"
+                />
+              )}
             </div>
           </div>
         </div>

@@ -233,6 +233,7 @@ export default function VehiclesOwnersPage() {
       />
       <VehicleDetailModal
         open={!!viewingVehicle} onClose={() => setViewingVehicle(null)} vehicle={viewingVehicle}
+        onChanged={(updated) => { setViewingVehicle(updated); loadVehicles(); }}
         onEdit={(v) => { setViewingVehicle(null); setEditingVehicle(v); setVehicleFormOpen(true); }}
       />
 

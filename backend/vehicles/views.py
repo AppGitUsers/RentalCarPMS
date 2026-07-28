@@ -75,7 +75,7 @@ class VehicleViewSet(viewsets.ModelViewSet):
                     )
                     if exclude_rental_id:
                         conflict_qs = conflict_qs.exclude(pk=exclude_rental_id)
-                    qs = qs.filter(is_active=True).exclude(Exists(conflict_qs))
+                    qs = qs.filter(is_active=True).exclude(status='maintenance').exclude(Exists(conflict_qs))
         return qs
 
     def get_serializer_class(self):
@@ -94,6 +94,30 @@ class VehicleViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         logger.info("Vehicle deleted — #%s %s", instance.id, instance.registration_number)
         instance.delete()
+
+    @action(detail=True, methods=['post'])
+    def set_status(self, request, pk=None):
+        """
+        Manually change a vehicle's status. 'rented' is deliberately not a
+        selectable target here — it's only ever set automatically by start()/
+        close_rental() so it always matches a real active rental record, and a
+        vehicle currently out on rent can't have its status changed until that
+        rental is closed.
+        """
+        vehicle = self.get_object()
+        if vehicle.status == 'rented':
+            return Response(
+                {'detail': 'This vehicle is currently out on an active rental — its status changes automatically when that rental is closed.'},
+                status=400,
+            )
+        new_status = request.data.get('status')
+        allowed = {'available', 'maintenance', 'inactive'}
+        if new_status not in allowed:
+            return Response({'detail': f"Status must be one of: {', '.join(sorted(allowed))}."}, status=400)
+        vehicle.status = new_status
+        vehicle.save(update_fields=['status'])
+        logger.info("Vehicle #%s (%s) status manually set to %s", vehicle.id, vehicle.registration_number, new_status)
+        return Response(VehicleSerializer(vehicle).data)
 
     @action(detail=False, methods=['get'])
     def status_summary(self, request):

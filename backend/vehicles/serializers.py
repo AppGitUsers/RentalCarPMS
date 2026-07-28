@@ -47,7 +47,7 @@ class VehicleSerializer(serializers.ModelSerializer):
             'fitness_expiry', 'rc_number', 'notes', 'is_active', 'created_at', 'updated_at',
             'gallery_images', 'active_rental', 'owner_rate',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'status']
 
     def get_active_rental(self, obj):
         active = obj.rentals.filter(status='active').first()
