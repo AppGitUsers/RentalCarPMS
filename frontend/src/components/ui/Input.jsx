@@ -2,9 +2,14 @@ import { forwardRef } from 'react';
 import { cn } from '../../utils/cn';
 
 const Input = forwardRef(function Input(
-  { label, error, required, hint, icon: Icon, className, containerClassName, ...props },
+  { label, error, required, hint, icon: Icon, className, containerClassName, onWheel, type, ...props },
   ref
 ) {
+  const handleWheel = (e) => {
+    if (type === 'number') e.target.blur();
+    onWheel?.(e);
+  };
+
   return (
     <div className={containerClassName}>
       {label && (
@@ -16,6 +21,8 @@ const Input = forwardRef(function Input(
         {Icon && <Icon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-navy-300" />}
         <input
           ref={ref}
+          type={type}
+          onWheel={handleWheel}
           className={cn(
             'w-full px-3.5 py-2.5 rounded-lg border bg-white text-sm text-navy-900 placeholder:text-navy-300 transition-colors',
             'focus:outline-none focus:ring-2 focus:ring-navy-300 focus:border-navy-400',

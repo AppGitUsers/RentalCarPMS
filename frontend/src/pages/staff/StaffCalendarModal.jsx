@@ -408,6 +408,7 @@ export default function StaffCalendarModal({ staff, onClose, onPaymentRecorded }
                   type="number"
                   value={payAmount}
                   onChange={(e) => setPayAmount(e.target.value)}
+                  onWheel={(e) => e.target.blur()}
                   className="w-full border border-navy-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400"
                   min="0"
                   step="0.01"
