@@ -11,6 +11,7 @@ import VehiclesOwnersPage from './pages/vehicles/VehiclesOwnersPage';
 import CustomersPage from './pages/customers/CustomersPage';
 import StaffPage from './pages/staff/StaffPage';
 import FinancePage from './pages/finance/FinancePage';
+import AddEntryPage from './pages/finance/AddEntryPage';
 import SettingsPage from './pages/settings/SettingsPage';
 import PublicInvoicePage from './pages/invoice/PublicInvoicePage';
 import SessionExpiredModal from './components/common/SessionExpiredModal';
@@ -51,6 +52,7 @@ function AppRoutes() {
         <Route path="customers" element={<CustomersPage />} />
         <Route path="staff" element={<AdminRoute><StaffPage /></AdminRoute>} />
         <Route path="finance" element={<AdminRoute><FinancePage /></AdminRoute>} />
+        <Route path="add-entry" element={<AddEntryPage />} />
         <Route path="settings" element={<AdminRoute><SettingsPage /></AdminRoute>} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, Fingerprint,
+  LayoutDashboard, Car, Users, UserCircle, CalendarRange, Wallet, Settings, LogOut, Fingerprint, Receipt,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSidebar } from '../../context/SidebarContext';
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/rentals', label: 'Car Rentals', icon: CalendarRange },
   { to: '/vehicles', label: 'Owners & Cars', icon: Car },
   { to: '/customers', label: 'Customers', icon: UserCircle },
+  { to: '/add-entry', label: 'Add Entry', icon: Receipt },
   { to: '/staff', label: 'Staff', icon: Users, adminOnly: true },
   { to: '/finance', label: 'Finance', icon: Wallet, adminOnly: true },
   { to: '/settings', label: 'Settings', icon: Settings, adminOnly: true },

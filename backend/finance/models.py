@@ -31,6 +31,10 @@ class FinanceEntry(models.Model):
     date = models.DateField(db_index=True)
     notes = models.TextField(blank=True, default="")
     attachment = models.FileField(upload_to="finance/attachments/", blank=True, null=True)
+    created_by = models.ForeignKey(
+        'accounts.AdminUser', null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='finance_entries',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

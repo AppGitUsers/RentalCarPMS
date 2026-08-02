@@ -28,8 +28,14 @@ class FinanceEntryViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'notes']
     ordering_fields = ['date', 'amount']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.request.query_params.get('mine') == 'true':
+            qs = qs.filter(created_by=self.request.user)
+        return qs
+
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(created_by=self.request.user)
         logger.info("Finance entry added — %s: %s %s (%s)", instance.entry_type, instance.amount, instance.title, instance.date)
 
     def perform_update(self, serializer):
