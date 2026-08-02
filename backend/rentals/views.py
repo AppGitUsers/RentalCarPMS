@@ -8,7 +8,6 @@ from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -24,11 +23,6 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _require_admin(user):
-    if user.role != 'admin':
-        raise PermissionDenied("Admin access required.")
 
 
 class RentalViewSet(viewsets.ModelViewSet):
@@ -97,7 +91,7 @@ class RentalViewSet(viewsets.ModelViewSet):
         return Response(RentalDetailSerializer(rental).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
-        """Admin-only edit of trip details. Blocked once the rental is closed/cancelled,
+        """Edits trip details. Blocked once the rental is closed/cancelled,
         and re-runs the same booking-buffer conflict check used at creation time.
 
         If the edited dates change the booked-day count (whichever boundary moved,
@@ -108,7 +102,6 @@ class RentalViewSet(viewsets.ModelViewSet):
         If the new total ends up below what the customer already paid, amount_paid
         is clamped down to match (silently — this is a booking correction, not a
         cancellation, so no refund prompt/FinanceEntry here)."""
-        _require_admin(request.user)
         partial = kwargs.get('partial', False)
         instance = self.get_object()
 
@@ -159,7 +152,7 @@ class RentalViewSet(viewsets.ModelViewSet):
             serializer.validated_data['payment_status'] = new_payment_status
 
         self.perform_update(serializer)
-        logger.info("Rental #%s edited by admin %s", instance.id, request.user.username)
+        logger.info("Rental #%s edited by %s", instance.id, request.user.username)
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
@@ -232,10 +225,10 @@ class RentalViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
-        """Admin-only. A rental can only be cancelled before pickup — once the
-        vehicle is handed over (active), it can no longer be cancelled.
+        """A rental can only be cancelled before pickup — once the vehicle is
+        handed over (active), it can no longer be cancelled.
 
-        If any amount was already collected, the admin states how much of it
+        If any amount was already collected, the caller states how much of it
         was refunded. Whatever is NOT refunded (amount_paid - refund_amount)
         is logged as a Rental Cancellation income entry in Finance — the
         rental's own amount_paid/total_amount are left untouched as history,
@@ -245,7 +238,6 @@ class RentalViewSet(viewsets.ModelViewSet):
         """
         from finance.models import FinanceEntry
 
-        _require_admin(request.user)
         rental = self.get_object()
         if rental.status != 'booked':
             return Response({'detail': 'Only a booked (not yet picked up) rental can be cancelled.'}, status=400)
@@ -277,7 +269,7 @@ class RentalViewSet(viewsets.ModelViewSet):
                 )
 
         logger.info(
-            "Rental #%s cancelled — customer: %s, vehicle: %s (by admin %s), refunded: %s, kept: %s",
+            "Rental #%s cancelled — customer: %s, vehicle: %s (by %s), refunded: %s, kept: %s",
             rental.id, rental.customer.full_name, rental.vehicle.registration_number,
             request.user.username, refund_amount, kept_amount,
         )

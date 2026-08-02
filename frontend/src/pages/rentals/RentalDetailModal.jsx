@@ -18,7 +18,6 @@ import * as customersApi from '../../api/customers';
 import * as vehiclesApi from '../../api/vehicles';
 import { useToast } from '../../components/ui/Toast';
 import { useSettings } from '../../context/SettingsContext';
-import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateTime, toDateTimeInputValue } from '../../utils/format';
 
 const PICKUP_VENUE_OPTIONS = [
@@ -40,9 +39,7 @@ const PAYMENT_TIMING_OPTIONS = [
 export default function RentalDetailModal({ open, onClose, rentalId, initialMode, onChanged }) {
   const { showToast } = useToast();
   const { settings } = useSettings();
-  const { user } = useAuth();
   const symbol = settings?.currency_symbol || '₹';
-  const isAdmin = !user?.role || user?.role === 'admin';
 
   const [rental, setRental] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -330,7 +327,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
         <div className="py-12 flex justify-center"><Spinner /></div>
       ) : mode === 'view' ? (
         <ViewMode
-          rental={rental} symbol={symbol} isAdmin={isAdmin}
+          rental={rental} symbol={symbol}
           onStart={() => { setOdometerStart(rental.odometer_start || ''); setMode('start'); }}
           onClose={() => { setOdometerEnd(''); setDamageAmount('0'); setDamageNotes(''); setFeesWaived(false); setWaiverNotes(''); setMode('close'); }}
           onPay={() => { setPaymentAmount(rental.balance_due); setMode('pay'); }}
@@ -406,7 +403,7 @@ export default function RentalDetailModal({ open, onClose, rentalId, initialMode
   );
 }
 
-function ViewMode({ rental, symbol, isAdmin, onStart, onClose, onPay, onExtend, onCancelRental, onEditRental, onDownload }) {
+function ViewMode({ rental, symbol, onStart, onClose, onPay, onExtend, onCancelRental, onEditRental, onDownload }) {
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
@@ -482,10 +479,10 @@ function ViewMode({ rental, symbol, isAdmin, onStart, onClose, onPay, onExtend, 
         {rental.balance_due > 0 && rental.status !== 'cancelled' && (
           <Button variant="primary" icon={CreditCard} onClick={onPay}>Record Payment</Button>
         )}
-        {isAdmin && (rental.status === 'booked' || rental.status === 'active') && (
+        {(rental.status === 'booked' || rental.status === 'active') && (
           <Button variant="secondary" icon={Pencil} onClick={onEditRental}>Edit Rental</Button>
         )}
-        {isAdmin && rental.status === 'booked' && (
+        {rental.status === 'booked' && (
           <Button variant="danger" icon={Ban} onClick={onCancelRental}>Cancel Rental</Button>
         )}
         <Button variant="secondary" icon={Download} onClick={() => onDownload('invoice')}>Invoice PDF</Button>
